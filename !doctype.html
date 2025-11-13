@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>광학 시뮬레이터 | Web Optical Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="다층 박막, 엘립소메트리(Ψ, Δ), 프레넬 계수 |r_p|, |r_s|와 위상 δ_p, δ_s를 웹에서 시뮬레이션하는 광학 시뮬레이터 프로젝트."
+    />
+    <meta name="author" content="Hyun Don Kim (김현돈)" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #050816;
+        color: #e5e7eb;
+        line-height: 1.6;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(12px);
+        background: rgba(5, 8, 22, 0.8);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .nav-inner {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        font-size: 1.05rem;
+      }
+
+      .logo span {
+        color: #38bdf8;
+      }
+
+      .nav-links a {
+        margin-left: 1.25rem;
+        font-size: 0.9rem;
+        text-decoration: none;
+        color: #9ca3af;
+      }
+
+      .nav-links a:hover {
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 3.5rem;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
+        gap: 2rem;
+        align-items: center;
+        margin-top: 1.5rem;
+        margin-bottom: 3rem;
+      }
+
+      .hero-title {
+        font-size: clamp(2.1rem, 3vw, 2.7rem);
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-title span {
+        color: #38bdf8;
+      }
+
+      .hero-subtitle {
+        font-size: 0.98rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .tag {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        color: #e5e7eb;
+      }
+
+      .hero-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .btn-primary,
+      .btn-ghost {
+        font-size: 0.9rem;
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        color: #0b1120;
+        font-weight: 600;
+      }
+
+      .btn-primary span {
+        font-size: 1.1rem;
+      }
+
+      .btn-ghost {
+        border-color: rgba(148, 163, 184, 0.6);
+        color: #e5e7eb;
+        background: transparent;
+      }
+
+      .btn-ghost:hover {
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      .hero-card {
+        border-radius: 1.25rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.1),
+            transparent
+          ),
+          radial-gradient(
+            circle at bottom right,
+            rgba(34, 197, 94, 0.12),
+            transparent
+          ),
+          #020617;
+        padding: 1.25rem 1.35rem;
+      }
+
+      .hero-card-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .hero-card-title span {
+        font-size: 1.2rem;
+      }
+
+      .hero-card-desc {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-card-list {
+        list-style: none;
+        font-size: 0.83rem;
+        color: #cbd5f5;
+      }
+
+      .hero-card-list li {
+        margin-bottom: 0.35rem;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 999px;
+        background: #22c55e;
+        margin-right: 0.35rem;
+      }
+
+      section {
+        margin-bottom: 2.5rem;
+      }
+
+      section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+      }
+
+      section p {
+        font-size: 0.9rem;
+        color: #d1d5db;
+        margin-bottom: 0.5rem;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .feature {
+        border-radius: 0.9rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.8);
+        padding: 0.9rem;
+        font-size: 0.85rem;
+      }
+
+      .feature-title {
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+      }
+
+      footer {
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 1rem 1.25rem 2rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 768px) {
+        .hero {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .nav-links {
+          display: none;
+        }
+
+        main {
+          padding-top: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-inner">
+        <div class="logo">
+          광학 <span>시뮬레이터</span>
+        </div>
+        <nav class="nav-links">
+          <a href="#about">소개</a>
+          <a href="#features">기능 (예정)</a>
+          <a href="#contact">연구 &amp; 문의</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <h1 class="hero-title">
+            웹에서 실시간으로 보는<br />
+            <span>광학 박막 시뮬레이션</span>
+          </h1>
+          <p class="hero-subtitle">
+            아직은 “홈페이지 버전 0.1” 단계입니다. 앞으로
+            다층 박막 반사/투과, 엘립소메트리(Ψ, Δ), 프레넬 계수
+            |r<sub>p</sub>|, |r<sub>s</sub>|와 위상 δ<sub>p</sub>, δ<sub>s</sub>까지
+            브라우저에서 바로 시뮬레이션할 수 있는 플랫폼으로 발전시킬 예정입니다.
+          </p>
+
+          <div class="hero-tags">
+            <span class="tag">Thin Film Optics</span>
+            <span class="tag">Ellipsometry (Ψ, Δ)</span>
+            <span class="tag">Fresnel Coefficients</span>
+            <span class="tag">웹 시뮬레이터</span>
+            <span class="tag">개발 중</span>
+          </div>
+
+          <div class="hero-buttons">
+            <a href="#features" class="btn-primary">
+              <span>▶</span>
+              앞으로 구현될 기능 보기
+            </a>
+            <a href="#about" class="btn-ghost">
+              연구 배경 보기
+            </a>
+          </div>
+        </div>
+
+        <aside class="hero-card">
+          <div class="hero-card-title">
+            <span>◎</span> 현재 상태: Prototype Homepage
+          </div>
+          <p class="hero-card-desc">
+            이 사이트는 “광학 박막/엘립소메트리 교육 및 연구용 웹 시뮬레이터”를
+            목표로 하는 초기 버전입니다. 지금은 UI 골격과 소개만 구성한 상태입니다.
+          </p>
+          <ul class="hero-card-list">
+            <li><span class="dot"></span>다층 구조에서의 광 반사/투과 계산</li>
+            <li><span class="dot"></span>Ψ, Δ 및 tanΨ, tanΔ 시각화</li>
+            <li>
+              <span class="dot"></span>프레넬 계수 |r<sub>p</sub>|, |r<sub>s</sub>|
+              및 위상 δ<sub>p</sub>, δ<sub>s</sub> 확인
+            </li>
+            <li><span class="dot"></span>s-Brewster, 특수각 탐색 기능</li>
+            <li><span class="dot"></span>결함 흡수(ε₂) 증폭 구조 설계 도구</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section id="about">
+        <h2>사이트 소개</h2>
+        <p>
+          이 프로젝트는 “광학 박막 구조에서 매우 작은 흡수 신호를 증폭하여
+          관측하는 방법”을 연구하는 과정에서 시작되었습니다. 실험실에서 사용하던
+          엘립소메트리 모델링과 전파행렬 계산을, 누구나 웹 브라우저만 있으면
+          직접 만져볼 수 있도록 옮기는 것을 목표로 합니다.
+        </p>
+        <p>
+          향후에는 연구용으로 사용할 수 있을 정도의 정확도와,
+          교육용으로 직관적인 시각화를 동시에 제공하는 것을 지향합니다.
+        </p>
+        <p>
+          본 프로젝트는 김현돈(Hyun Don Kim)에 의해 개발되고 있으며,
+          서울시립대학교 물리학과에서 진행 중인 광학 박막/엘립소메트리
+          실험 연구를 바탕으로 합니다.
+        </p>
+      </section>
+
+      <section id="features">
+        <h2>앞으로 들어갈 주요 기능 (계획)</h2>
+        <div class="feature-grid">
+          <article class="feature">
+            <div class="feature-title">1. 다층 박막 TMM 시뮬레이터</div>
+            <p>
+              Air / Film / Substrate 구조에서 시작해, 삽입층이 있는 3-layer 이상
+              구조까지 전파행렬법(Transfer Matrix Method)로 R, T를 계산하고
+              그래프로 표시합니다.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">2. 엘립소메트리 Ψ, Δ 계산</div>
+            <p>
+              s, p 편광 반사계수로부터 Ψ, Δ 및 tanΨ를 계산해, 기존
+              실험 데이터(예: V-VASE, CompleteEASE)와 유사한 형식으로
+              확인할 수 있도록 할 예정입니다.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">3. 결함 흡수 증폭 구조 설계</div>
+            <p>
+              ε₂에 아주 작은 Lorentz oscillator를 추가한 뒤, 삽입층 두께나
+              입사각을 조정하면서 δΨ, δΔ 증폭 효과를 직관적으로 확인하는
+              디자인 툴을 목표로 합니다.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">4. 프레넬 계수 및 위상 분석</div>
+            <p>
+              각 인터페이스에서의 프레넬 계수 |r<sub>p</sub>|, |r<sub>s</sub>|와
+              위상 δ<sub>p</sub>, δ<sub>s</sub>를 파장이나 입사각에 따라
+              시각화해, Brewster 각 및 s-Brewster 특수각 등과의 연관성을
+              직관적으로 확인할 수 있도록 할 예정입니다.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="contact">
+        <h2>연구 &amp; 문의</h2>
+        <p>
+          이 사이트는 개인 연구 프로젝트로 개발 중이며, 향후
+          공개 시뮬레이터, 교육용 데모, 논문/발표용 보조 도구 등으로 활용될
+          예정입니다.
+        </p>
+        <p>
+          추후 GitHub 저장소 링크, 논문/프리프린트, 튜토리얼 문서를 이 섹션에
+          정리할 계획입니다.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      © <span id="year"></span> 광학 시뮬레이터 · Web Optical Simulator.
+      All rights reserved.
+      <br />
+      Built &amp; developed by Hyun Don Kim (김현돈).
+      <script>
+        document.getElementById("year").textContent =
+          new Date().getFullYear();
+      </script>
+    </footer>
+  </body>
+</html>
