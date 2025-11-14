@@ -155,6 +155,11 @@
         margin: 0 auto;
       }
 
+      #fresnel-plot {
+        height: 320px;
+        margin-top: 1rem;
+      }
+
       @media (max-width: 640px) {
         .nav-links {
           display: none;
@@ -169,6 +174,9 @@
         }
       }
     </style>
+
+    <!-- Plotly (그래프용) CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   </head>
   <body>
     <header>
@@ -187,11 +195,16 @@
       <p class="subtitle">
         Air–Film 단일 인터페이스에서 s, p 편광에 대한 프레넬 계수
         |r<sub>s</sub>|, |r<sub>p</sub>|를 계산해 보는 테스트 페이지입니다.
-        현재는 노트북의 <code>get_rij</code>와 같은 형태의 식을,
-        실수 굴절률만 사용하는 간단한 버전으로 구현했습니다.
+        먼저 단일 에너지(한 번의 입력)에 대한 값을 계산하고, 이어서 여러
+        에너지 값에 대해 |r<sub>s</sub>|, |r<sub>p</sub>|를 그래프로 확인할 수 있습니다.
       </p>
 
       <section class="card">
+        <!-- (1) 단일 에너지에 대한 계산 -->
+        <h2 style="font-size: 1rem; margin-bottom: 0.6rem">
+          1. 단일 에너지에서의 프레넬 계수
+        </h2>
+
         <div class="form-grid">
           <div>
             <label>
@@ -231,6 +244,88 @@
           에서는 간단히 전반사라고만 표시합니다. 이후 복소 굴절률과 위상
           δ<sub>s</sub>, δ<sub>p</sub> 계산까지 확장 예정입니다.
         </p>
+
+        <hr
+          style="
+            border: none;
+            border-top: 1px solid rgba(148, 163, 184, 0.35);
+            margin: 1.2rem 0;
+          "
+        />
+
+        <!-- (2) 여러 에너지에 대한 그래프 -->
+        <h2 style="font-size: 1rem; margin-bottom: 0.4rem">
+          2. 에너지 범위에 대한 |r<sub>s</sub>|, |r<sub>p</sub>| 그래프
+        </h2>
+        <p class="note" style="margin-bottom: 0.7rem">
+          주어진 입사각 θ<sub>i</sub>와 n<sub>1</sub>을 고정한 상태에서,
+          에너지에 따라 n<sub>2</sub>가 선형으로 변한다고 가정하고
+          |r<sub>s</sub>|, |r<sub>p</sub>|를 계산하여 그래프로 표시합니다.
+          (실제 연구에서는 이 부분에 실제 분산 데이터 n(E)를 넣으면 됩니다.)
+        </p>
+
+        <div class="form-grid">
+          <div>
+            <label>
+              E<sub>min</sub> (eV)
+              <input
+                type="number"
+                id="emin-input"
+                value="1.5"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              E<sub>max</sub> (eV)
+              <input
+                type="number"
+                id="emax-input"
+                value="3.0"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              n<sub>2</sub>(E<sub>min</sub>)
+              <input
+                type="number"
+                id="n2-emin-input"
+                value="2.0"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              n<sub>2</sub>(E<sub>max</sub>)
+              <input
+                type="number"
+                id="n2-emax-input"
+                value="2.5"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              에너지 샘플 수 (points)
+              <input
+                type="number"
+                id="points-input"
+                value="80"
+                min="10"
+                max="400"
+              />
+            </label>
+          </div>
+        </div>
+
+        <button id="plot-btn">에너지 범위에 대해 그래프 그리기</button>
+
+        <div id="fresnel-plot"></div>
       </section>
 
       <a href="index.html" class="back-link"> ← 메인 페이지로 돌아가기 </a>
@@ -242,7 +337,9 @@
     </footer>
 
     <script>
-      // notebook의 make_config 에서 incidence(각도)를 radian으로 쓰는 것처럼, 여기서도 deg→rad 변환
+      document.getElementById("year").textContent =
+        new Date().getFullYear();
+
       function degToRad(deg) {
         return (deg * Math.PI) / 180;
       }
@@ -262,17 +359,22 @@
         return num / den;
       }
 
-      document.getElementById("year").textContent =
-        new Date().getFullYear();
-
       document.addEventListener("DOMContentLoaded", function () {
         const thetaInput = document.getElementById("theta-input");
         const n1Input = document.getElementById("n1-input");
         const n2Input = document.getElementById("n2-input");
-        const btn = document.getElementById("calc-btn");
+        const calcBtn = document.getElementById("calc-btn");
         const result = document.getElementById("fresnel-result");
 
-        btn.addEventListener("click", function () {
+        const eminInput = document.getElementById("emin-input");
+        const emaxInput = document.getElementById("emax-input");
+        const n2EminInput = document.getElementById("n2-emin-input");
+        const n2EmaxInput = document.getElementById("n2-emax-input");
+        const pointsInput = document.getElementById("points-input");
+        const plotBtn = document.getElementById("plot-btn");
+
+        // (1) 단일 에너지 계산 버튼
+        calcBtn.addEventListener("click", function () {
           const thetaDeg = parseFloat(thetaInput.value);
           const n1 = parseFloat(n1Input.value);
           const n2 = parseFloat(n2Input.value);
@@ -302,6 +404,110 @@
           result.textContent =
             `|r_s| = ${absRs.toFixed(4)}, ` +
             `|r_p| = ${absRp.toFixed(4)}  (실수 굴절률 기준 단일 인터페이스)`;
+        });
+
+        // (2) 에너지 범위에 대한 그래프 버튼
+        plotBtn.addEventListener("click", function () {
+          const thetaDeg = parseFloat(thetaInput.value);
+          const n1 = parseFloat(n1Input.value);
+
+          const Emin = parseFloat(eminInput.value);
+          const Emax = parseFloat(emaxInput.value);
+          const n2Emin = parseFloat(n2EminInput.value);
+          const n2Emax = parseFloat(n2EmaxInput.value);
+          let points = parseInt(pointsInput.value, 10);
+
+          if (
+            !isFinite(thetaDeg) ||
+            !isFinite(n1) ||
+            !isFinite(Emin) ||
+            !isFinite(Emax) ||
+            !isFinite(n2Emin) ||
+            !isFinite(n2Emax)
+          ) {
+            result.textContent =
+              "에너지 스윕 입력값을 다시 확인해주세요.";
+            return;
+          }
+
+          if (Emax <= Emin) {
+            result.textContent = "Emax는 Emin보다 커야 합니다.";
+            return;
+          }
+
+          if (!isFinite(points) || points < 10) points = 10;
+          if (points > 400) points = 400;
+
+          const thetaI = degToRad(thetaDeg);
+
+          const energies = [];
+          const rsArr = [];
+          const rpArr = [];
+
+          for (let i = 0; i < points; i++) {
+            const t =
+              points === 1 ? 0 : i / (points - 1); // 0~1 사이
+            const E = Emin + (Emax - Emin) * t;
+
+            // n2(E)를 선형으로 보간 (향후 실제 분산 데이터로 교체 가능)
+            const n2 = n2Emin + (n2Emax - n2Emin) * t;
+
+            const sinTi = (n1 / n2) * Math.sin(thetaI);
+
+            if (Math.abs(sinTi) > 1) {
+              // 전반사 구간: 그래프에서 끊어지도록 null 사용
+              energies.push(E);
+              rsArr.push(null);
+              rpArr.push(null);
+              continue;
+            }
+
+            const thetaT = Math.asin(sinTi);
+            const rs = fresnel_r_s(n1, n2, thetaI, thetaT);
+            const rp = fresnel_r_p(n1, n2, thetaI, thetaT);
+
+            energies.push(E);
+            rsArr.push(Math.abs(rs));
+            rpArr.push(Math.abs(rp));
+          }
+
+          const traceS = {
+            x: energies,
+            y: rsArr,
+            name: "|r_s|",
+            mode: "lines",
+          };
+
+          const traceP = {
+            x: energies,
+            y: rpArr,
+            name: "|r_p|",
+            mode: "lines",
+          };
+
+          const layout = {
+            margin: { t: 20, r: 10, b: 45, l: 50 },
+            xaxis: {
+              title: "Energy (eV)",
+            },
+            yaxis: {
+              title: "|r|",
+              range: [0, 1],
+            },
+            legend: {
+              x: 0.02,
+              y: 0.98,
+            },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(15,23,42,0.9)",
+            font: {
+              color: "#e5e7eb",
+            },
+          };
+
+          Plotly.newPlot("fresnel-plot", [traceS, traceP], layout, {
+            responsive: true,
+          });
         });
       });
     </script>
