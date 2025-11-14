@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>프레넬 계수 데모 | 광학 시뮬레이터</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #050816;
+        color: #e5e7eb;
+        line-height: 1.6;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(12px);
+        background: rgba(5, 8, 22, 0.8);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .nav-inner {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        font-size: 1.05rem;
+      }
+
+      .logo span {
+        color: #38bdf8;
+      }
+
+      .nav-links a {
+        margin-left: 1.25rem;
+        font-size: 0.9rem;
+        text-decoration: none;
+        color: #9ca3af;
+      }
+
+      .nav-links a:hover {
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 3.5rem;
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 3vw, 2.2rem);
+        margin-bottom: 0.75rem;
+      }
+
+      .subtitle {
+        font-size: 0.95rem;
+        color: #9ca3af;
+        margin-bottom: 1.5rem;
+      }
+
+      .card {
+        border-radius: 1.1rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.9);
+        padding: 1.25rem 1.35rem;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+      }
+
+      label {
+        font-size: 0.85rem;
+        display: block;
+        color: #cbd5f5;
+      }
+
+      input[type="number"] {
+        margin-top: 0.25rem;
+        width: 100%;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.4rem;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        background: #020617;
+        color: #e5e7eb;
+      }
+
+      button {
+        font-size: 0.9rem;
+        padding: 0.55rem 1.1rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        color: #0b1120;
+        font-weight: 600;
+      }
+
+      button:hover {
+        filter: brightness(1.05);
+      }
+
+      .result {
+        margin-top: 0.9rem;
+        font-size: 0.9rem;
+        color: #e5e7eb;
+      }
+
+      .note {
+        margin-top: 0.6rem;
+        font-size: 0.8rem;
+        color: #9ca3af;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #9ca3af;
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        color: #e5e7eb;
+      }
+
+      footer {
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 1rem 1.25rem 2rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 640px) {
+        .nav-links {
+          display: none;
+        }
+
+        main {
+          padding: 1.75rem 1.1rem 2.5rem;
+        }
+
+        .form-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-inner">
+        <div class="logo">
+          광학 <span>시뮬레이터</span>
+        </div>
+        <nav class="nav-links">
+          <a href="index.html">홈으로</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <h1>프레넬 계수 미니 데모</h1>
+      <p class="subtitle">
+        Air–Film 단일 인터페이스에서 s, p 편광에 대한 프레넬 계수
+        |r<sub>s</sub>|, |r<sub>p</sub>|를 계산해 보는 테스트 페이지입니다.
+        현재는 노트북의 <code>get_rij</code>와 같은 형태의 식을,
+        실수 굴절률만 사용하는 간단한 버전으로 구현했습니다.
+      </p>
+
+      <section class="card">
+        <div class="form-grid">
+          <div>
+            <label>
+              입사각 θ<sub>i</sub> (deg)
+              <input
+                type="number"
+                id="theta-input"
+                value="60"
+                min="0"
+                max="89"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
+              n<sub>1</sub> (입사측, 예: 공기 1.0)
+              <input type="number" id="n1-input" value="1.0" step="0.01" />
+            </label>
+          </div>
+          <div>
+            <label>
+              n<sub>2</sub> (전달측, 예: SiNₓ 2.0)
+              <input type="number" id="n2-input" value="2.0" step="0.01" />
+            </label>
+          </div>
+        </div>
+
+        <button id="calc-btn">프레넬 계수 계산하기</button>
+
+        <p id="fresnel-result" class="result">
+          아직 계산되지 않았습니다.
+        </p>
+        <p class="note">
+          ※ 현재는 n만 실수(real)인 경우에 대한 |r<sub>s</sub>|, |r<sub>p</sub>|만
+          계산합니다. 이는 노트북에서 <code>get_rij(..., rt="r", sp="s/p")</code>로
+          얻는 rs, rp의 절댓값에 대응합니다. 전반사 영역(sin θ<sub>t</sub> &gt; 1)
+          에서는 간단히 전반사라고만 표시합니다. 이후 복소 굴절률과 위상
+          δ<sub>s</sub>, δ<sub>p</sub> 계산까지 확장 예정입니다.
+        </p>
+      </section>
+
+      <a href="index.html" class="back-link"> ← 메인 페이지로 돌아가기 </a>
+    </main>
+
+    <footer>
+      © <span id="year"></span> 광학 시뮬레이터 · Web Optical Simulator.
+      All rights reserved.
+    </footer>
+
+    <script>
+      // notebook의 make_config 에서 incidence(각도)를 radian으로 쓰는 것처럼, 여기서도 deg→rad 변환
+      function degToRad(deg) {
+        return (deg * Math.PI) / 180;
+      }
+
+      // 노트북의 get_rij 식을 JS로 옮긴 버전 (실수 n만)
+      function fresnel_r_s(n1, n2, thetaI, thetaT) {
+        // rs = (n1 cos θi - n2 cos θt) / (n1 cos θi + n2 cos θt)
+        const num = n1 * Math.cos(thetaI) - n2 * Math.cos(thetaT);
+        const den = n1 * Math.cos(thetaI) + n2 * Math.cos(thetaT);
+        return num / den;
+      }
+
+      function fresnel_r_p(n1, n2, thetaI, thetaT) {
+        // rp = (n2 cos θi - n1 cos θt) / (n2 cos θi + n1 cos θt)
+        const num = n2 * Math.cos(thetaI) - n1 * Math.cos(thetaT);
+        const den = n2 * Math.cos(thetaI) + n1 * Math.cos(thetaT);
+        return num / den;
+      }
+
+      document.getElementById("year").textContent =
+        new Date().getFullYear();
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const thetaInput = document.getElementById("theta-input");
+        const n1Input = document.getElementById("n1-input");
+        const n2Input = document.getElementById("n2-input");
+        const btn = document.getElementById("calc-btn");
+        const result = document.getElementById("fresnel-result");
+
+        btn.addEventListener("click", function () {
+          const thetaDeg = parseFloat(thetaInput.value);
+          const n1 = parseFloat(n1Input.value);
+          const n2 = parseFloat(n2Input.value);
+
+          if (!isFinite(thetaDeg) || !isFinite(n1) || !isFinite(n2)) {
+            result.textContent = "입력값을 다시 확인해주세요.";
+            return;
+          }
+
+          const thetaI = degToRad(thetaDeg);
+          const sinTi = (n1 / n2) * Math.sin(thetaI);
+
+          if (Math.abs(sinTi) > 1) {
+            result.textContent =
+              "전반사 영역입니다 (sin θt > 1). 현재 버전에서는 간단히 전반사로만 표시합니다.";
+            return;
+          }
+
+          const thetaT = Math.asin(sinTi);
+
+          const rs = fresnel_r_s(n1, n2, thetaI, thetaT);
+          const rp = fresnel_r_p(n1, n2, thetaI, thetaT);
+
+          const absRs = Math.abs(rs);
+          const absRp = Math.abs(rp);
+
+          result.textContent =
+            `|r_s| = ${absRs.toFixed(4)}, ` +
+            `|r_p| = ${absRp.toFixed(4)}  (실수 굴절률 기준 단일 인터페이스)`;
+        });
+      });
+    </script>
+  </body>
+</html>
