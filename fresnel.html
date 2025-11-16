@@ -150,7 +150,8 @@
       }
 
       #fresnel-plot-mag,
-      #fresnel-plot-phase {
+      #fresnel-plot-phase,
+      #nk-plot {
         height: 320px;
         margin-top: 1rem;
       }
@@ -193,7 +194,8 @@
         r<sub>s</sub>, r<sub>p</sub>를 계산합니다.
         에너지에 따라 n<sub>2</sub>(E), k<sub>2</sub>(E)가 선형으로 변한다고 가정하여
         |r<sub>s</sub>|, |r<sub>p</sub>|와 위상 δ<sub>s</sub>, δ<sub>p</sub>를
-        E에 대해 플롯합니다.
+        E에 대해 플롯합니다. 아래 세 번째 그래프에서는 계산에 실제로 사용된
+        n(E), k(E)도 함께 확인할 수 있습니다.
       </p>
 
       <section class="card">
@@ -327,6 +329,11 @@
           δ<sub>s</sub>, δ<sub>p</sub> vs Energy (deg)
         </h3>
         <div id="fresnel-plot-phase"></div>
+
+        <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
+          n(E), k(E) vs Energy (계산에 사용된 광학 상수)
+        </h3>
+        <div id="nk-plot"></div>
       </section>
 
       <a href="index.html" class="back-link"> ← 메인 페이지로 돌아가기 </a>
@@ -341,7 +348,7 @@
       document.getElementById("year").textContent =
         new Date().getFullYear();
 
-      // --- 복소수 유틸리티 (SMMO 로직 이식용 기본 블록) ---
+      // --- 복소수 유틸리티 ---
       class Complex {
         constructor(re, im) {
           this.re = re;
@@ -396,14 +403,12 @@
         }
 
         sqrt() {
-          // principal branch of sqrt for complex z = x + i y
           const x = this.re;
           const y = this.im;
-          const r = Math.hypot(x, y); // sqrt(x^2 + y^2)
+          const r = Math.hypot(x, y);
           if (r === 0) return new Complex(0, 0);
           const u = Math.sqrt((r + x) / 2);
           const v = Math.sqrt((r - x) / 2);
-          // y의 부호에 따라 허수부 부호 결정
           return new Complex(u, y >= 0 ? v : -v);
         }
       }
@@ -414,14 +419,12 @@
 
       // --- 복소 굴절률에서의 프레넬 계수 (단일 인터페이스) ---
       function fresnel_r_s(n1, n2, thetaI) {
-        // Snell: n1 * sinθ1 = n2 * sinθ2
         const sinI = Math.sin(thetaI);
         const cosI = Math.cos(thetaI);
 
         const n1_sinI = n1.mulReal(sinI);
-        const sinT = n1_sinI.div(n2); // 복소 sinθ2
+        const sinT = n1_sinI.div(n2);
 
-        // cosθ2 = sqrt(1 - sin^2 θ2)
         const one = Complex.one();
         const cosT = one.sub(sinT.square()).sqrt();
 
@@ -513,11 +516,13 @@
           const rsPhaseDegArr = [];
           const rpPhaseDegArr = [];
 
+          const n2ReArr = [];
+          const k2ImArr = [];
+
           for (let i = 0; i < points; i++) {
-            const t = points === 1 ? 0 : i / (points - 1); // 0~1
+            const t = points === 1 ? 0 : i / (points - 1);
             const E = Emin + (Emax - Emin) * t;
 
-            // n2(E), k2(E) 선형 보간
             const n2Re = n2Emin + (n2Emax - n2Emin) * t;
             const k2Im = k2Emin + (k2Emax - k2Emin) * t;
             const n2 = Complex.from(n2Re, k2Im);
@@ -528,8 +533,8 @@
             const absRs = rs.abs();
             const absRp = rp.abs();
 
-            const phaseRs = rs.arg(); // rad
-            const phaseRp = rp.arg(); // rad
+            const phaseRs = rs.arg();
+            const phaseRp = rp.arg();
 
             const phaseRsDeg = (phaseRs * 180) / Math.PI;
             const phaseRpDeg = (phaseRp * 180) / Math.PI;
@@ -539,7 +544,13 @@
             rpMagArr.push(absRp);
             rsPhaseDegArr.push(phaseRsDeg);
             rpPhaseDegArr.push(phaseRpDeg);
+
+            n2ReArr.push(n2Re);
+            k2ImArr.push(k2Im);
           }
+
+          const n1ReArr = energies.map(() => n1Re);
+          const k1ImArr = energies.map(() => k1Im);
 
           // (1) |r| 그래프
           const traceMagS = {
@@ -620,6 +631,61 @@
             "fresnel-plot-phase",
             [tracePhaseS, tracePhaseP],
             layoutPhase,
+            { responsive: true }
+          );
+
+          // (3) n(E), k(E) 그래프
+          const traceN1 = {
+            x: energies,
+            y: n1ReArr,
+            name: "n1 (real)",
+            mode: "lines",
+          };
+
+          const traceK1 = {
+            x: energies,
+            y: k1ImArr,
+            name: "k1 (imag)",
+            mode: "lines",
+          };
+
+          const traceN2 = {
+            x: energies,
+            y: n2ReArr,
+            name: "n2(E)",
+            mode: "lines",
+          };
+
+          const traceK2 = {
+            x: energies,
+            y: k2ImArr,
+            name: "k2(E)",
+            mode: "lines",
+          };
+
+          const layoutNK = {
+            margin: { t: 20, r: 10, b: 45, l: 50 },
+            xaxis: {
+              title: "Energy (eV)",
+            },
+            yaxis: {
+              title: "n, k",
+            },
+            legend: {
+              x: 0.02,
+              y: 0.98,
+            },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(15,23,42,0.9)",
+            font: {
+              color: "#e5e7eb",
+            },
+          };
+
+          Plotly.newPlot(
+            "nk-plot",
+            [traceN1, traceK1, traceN2, traceK2],
+            layoutNK,
             { responsive: true }
           );
         });
