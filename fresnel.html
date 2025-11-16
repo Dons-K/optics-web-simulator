@@ -186,13 +186,14 @@
     </header>
 
     <main>
-      <h1>프레넬 계수 에너지 스윕</h1>
+      <h1>프레넬 계수 에너지 스윕 (복소 굴절률)</h1>
       <p class="subtitle">
-        Air–Film 단일 인터페이스에서 s, p 편광에 대한 프레넬 계수
+        Air–Film 단일 인터페이스에서 복소 굴절률
+        n + i k 를 갖는 두 매질 사이의 프레넬 계수
+        r<sub>s</sub>, r<sub>p</sub>를 계산합니다.
+        에너지에 따라 n<sub>2</sub>(E), k<sub>2</sub>(E)가 선형으로 변한다고 가정하여
         |r<sub>s</sub>|, |r<sub>p</sub>|와 위상 δ<sub>s</sub>, δ<sub>p</sub>를
-        에너지에 따라 계산해 보는 페이지입니다.
-        여기서는 n<sub>1</sub>, 입사각 θ<sub>i</sub>를 고정하고,
-        n<sub>2</sub>(E)가 에너지에 따라 선형으로 변한다고 가정한 단순 모델을 사용합니다.
+        E에 대해 플롯합니다.
       </p>
 
       <section class="card">
@@ -215,8 +216,14 @@
           </div>
           <div>
             <label>
-              n<sub>1</sub> (입사측, 예: 공기 1.0)
+              n<sub>1</sub> (입사측, 실수부)
               <input type="number" id="n1-input" value="1.0" step="0.01" />
+            </label>
+          </div>
+          <div>
+            <label>
+              k<sub>1</sub> (입사측, 허수부)
+              <input type="number" id="k1-input" value="0.0" step="0.01" />
             </label>
           </div>
           <div>
@@ -254,6 +261,17 @@
           </div>
           <div>
             <label>
+              k<sub>2</sub>(E<sub>min</sub>)
+              <input
+                type="number"
+                id="k2-emin-input"
+                value="0.0"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
               n<sub>2</sub>(E<sub>max</sub>)
               <input
                 type="number"
@@ -265,26 +283,39 @@
           </div>
           <div>
             <label>
+              k<sub>2</sub>(E<sub>max</sub>)
+              <input
+                type="number"
+                id="k2-emax-input"
+                value="0.1"
+                step="0.01"
+              />
+            </label>
+          </div>
+          <div>
+            <label>
               에너지 샘플 수 (points)
               <input
                 type="number"
                 id="points-input"
-                value="80"
+                value="120"
                 min="10"
-                max="400"
+                max="600"
               />
             </label>
           </div>
         </div>
 
-        <button id="plot-btn">에너지 범위에 대해 계산 및 그래프 그리기</button>
+        <button id="plot-btn">
+          에너지 범위에 대해 프레넬 계수 계산 및 그래프 그리기
+        </button>
 
         <p class="note">
-          ※ 현재 버전은 굴절률이 실수(real)인 경우만 다룹니다. 이 경우 프레넬
-          계수 r은 실수이므로, 위상 δ는 0 또는 π (또는 -π)로만 변합니다.
-          Brewster 근처에서 r<sub>p</sub>가 0을 지나가며 위상 점프가 나타나는
-          구조를 직관적으로 볼 수 있습니다. 복소 굴절률(n+ik)을 포함한
-          일반적인 δ(E)는 이후 확장 예정입니다.
+          ※ n<sub>2</sub>(E), k<sub>2</sub>(E)는 E<sub>min</sub>과
+          E<sub>max</sub> 사이에서 선형 보간합니다. 실제 분산 데이터 n(E), k(E)를
+          사용하고 싶다면, 이 부분을 테이블/모델로 교체하면 됩니다.
+          복소 굴절률에서 r은 일반 복소수이므로, δ(E) = arg r(E)는
+          0~π를 넘나드는 일반적인 위상 곡선으로 나타납니다.
         </p>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
@@ -310,53 +341,156 @@
       document.getElementById("year").textContent =
         new Date().getFullYear();
 
+      // --- 복소수 유틸리티 (SMMO 로직 이식용 기본 블록) ---
+      class Complex {
+        constructor(re, im) {
+          this.re = re;
+          this.im = im;
+        }
+
+        static from(re, im) {
+          return new Complex(re, im);
+        }
+
+        static one() {
+          return new Complex(1, 0);
+        }
+
+        add(other) {
+          return new Complex(this.re + other.re, this.im + other.im);
+        }
+
+        sub(other) {
+          return new Complex(this.re - other.re, this.im - other.im);
+        }
+
+        mul(other) {
+          return new Complex(
+            this.re * other.re - this.im * other.im,
+            this.re * other.im + this.im * other.re
+          );
+        }
+
+        mulReal(a) {
+          return new Complex(this.re * a, this.im * a);
+        }
+
+        div(other) {
+          const den = other.re * other.re + other.im * other.im;
+          return new Complex(
+            (this.re * other.re + this.im * other.im) / den,
+            (this.im * other.re - this.re * other.im) / den
+          );
+        }
+
+        abs() {
+          return Math.hypot(this.re, this.im);
+        }
+
+        arg() {
+          return Math.atan2(this.im, this.re);
+        }
+
+        square() {
+          return this.mul(this);
+        }
+
+        sqrt() {
+          // principal branch of sqrt for complex z = x + i y
+          const x = this.re;
+          const y = this.im;
+          const r = Math.hypot(x, y); // sqrt(x^2 + y^2)
+          if (r === 0) return new Complex(0, 0);
+          const u = Math.sqrt((r + x) / 2);
+          const v = Math.sqrt((r - x) / 2);
+          // y의 부호에 따라 허수부 부호 결정
+          return new Complex(u, y >= 0 ? v : -v);
+        }
+      }
+
       function degToRad(deg) {
         return (deg * Math.PI) / 180;
       }
 
-      // 실수 굴절률에서의 프레넬 계수 (단일 인터페이스, s/p)
-      function fresnel_r_s(n1, n2, thetaI, thetaT) {
-        // rs = (n1 cos θi - n2 cos θt) / (n1 cos θi + n2 cos θt)
-        const num = n1 * Math.cos(thetaI) - n2 * Math.cos(thetaT);
-        const den = n1 * Math.cos(thetaI) + n2 * Math.cos(thetaT);
-        return num / den;
+      // --- 복소 굴절률에서의 프레넬 계수 (단일 인터페이스) ---
+      function fresnel_r_s(n1, n2, thetaI) {
+        // Snell: n1 * sinθ1 = n2 * sinθ2
+        const sinI = Math.sin(thetaI);
+        const cosI = Math.cos(thetaI);
+
+        const n1_sinI = n1.mulReal(sinI);
+        const sinT = n1_sinI.div(n2); // 복소 sinθ2
+
+        // cosθ2 = sqrt(1 - sin^2 θ2)
+        const one = Complex.one();
+        const cosT = one.sub(sinT.square()).sqrt();
+
+        const n1_cosI = n1.mulReal(cosI);
+        const n2_cosT = n2.mul(cosT);
+
+        const num = n1_cosI.sub(n2_cosT);
+        const den = n1_cosI.add(n2_cosT);
+        return num.div(den);
       }
 
-      function fresnel_r_p(n1, n2, thetaI, thetaT) {
-        // rp = (n2 cos θi - n1 cos θt) / (n2 cos θi + n1 cos θt)
-        const num = n2 * Math.cos(thetaI) - n1 * Math.cos(thetaT);
-        const den = n2 * Math.cos(thetaI) + n1 * Math.cos(thetaT);
-        return num / den;
+      function fresnel_r_p(n1, n2, thetaI) {
+        const sinI = Math.sin(thetaI);
+        const cosI = Math.cos(thetaI);
+
+        const n1_sinI = n1.mulReal(sinI);
+        const sinT = n1_sinI.div(n2);
+        const one = Complex.one();
+        const cosT = one.sub(sinT.square()).sqrt();
+
+        const n2_cosI = n2.mulReal(cosI);
+        const n1_cosT = n1.mul(cosT);
+
+        const num = n2_cosI.sub(n1_cosT);
+        const den = n2_cosI.add(n1_cosT);
+        return num.div(den);
       }
 
       document.addEventListener("DOMContentLoaded", function () {
         const thetaInput = document.getElementById("theta-input");
         const n1Input = document.getElementById("n1-input");
+        const k1Input = document.getElementById("k1-input");
 
         const eminInput = document.getElementById("emin-input");
         const emaxInput = document.getElementById("emax-input");
+
         const n2EminInput = document.getElementById("n2-emin-input");
+        const k2EminInput = document.getElementById("k2-emin-input");
         const n2EmaxInput = document.getElementById("n2-emax-input");
+        const k2EmaxInput = document.getElementById("k2-emax-input");
+
         const pointsInput = document.getElementById("points-input");
         const plotBtn = document.getElementById("plot-btn");
 
         plotBtn.addEventListener("click", function () {
           const thetaDeg = parseFloat(thetaInput.value);
-          const n1 = parseFloat(n1Input.value);
+          const n1Re = parseFloat(n1Input.value);
+          const k1Im = parseFloat(k1Input.value);
 
           const Emin = parseFloat(eminInput.value);
           const Emax = parseFloat(emaxInput.value);
+
           const n2Emin = parseFloat(n2EminInput.value);
+          const k2Emin = parseFloat(k2EminInput.value);
           const n2Emax = parseFloat(n2EmaxInput.value);
+          const k2Emax = parseFloat(k2EmaxInput.value);
+
           let points = parseInt(pointsInput.value, 10);
 
           if (
             !isFinite(thetaDeg) ||
-            !isFinite(n1) ||
+            !isFinite(n1Re) ||
+            !isFinite(k1Im) ||
             !isFinite(Emin) ||
             !isFinite(Emax) ||
             !isFinite(n2Emin) ||
-            !isFinite(n2Emax)
+            !isFinite(k2Emin) ||
+            !isFinite(n2Emax) ||
+            !isFinite(k2Emax)
           ) {
             alert("입력값을 다시 확인해주세요.");
             return;
@@ -368,9 +502,10 @@
           }
 
           if (!isFinite(points) || points < 10) points = 10;
-          if (points > 400) points = 400;
+          if (points > 600) points = 600;
 
           const thetaI = degToRad(thetaDeg);
+          const n1 = Complex.from(n1Re, k1Im);
 
           const energies = [];
           const rsMagArr = [];
@@ -379,34 +514,22 @@
           const rpPhaseDegArr = [];
 
           for (let i = 0; i < points; i++) {
-            const t = points === 1 ? 0 : i / (points - 1); // 0~1 사이
+            const t = points === 1 ? 0 : i / (points - 1); // 0~1
             const E = Emin + (Emax - Emin) * t;
 
-            // n2(E)를 선형 보간 (실제에선 분산 데이터/모델로 교체 가능)
-            const n2 = n2Emin + (n2Emax - n2Emin) * t;
+            // n2(E), k2(E) 선형 보간
+            const n2Re = n2Emin + (n2Emax - n2Emin) * t;
+            const k2Im = k2Emin + (k2Emax - k2Emin) * t;
+            const n2 = Complex.from(n2Re, k2Im);
 
-            const sinTi = (n1 / n2) * Math.sin(thetaI);
+            const rs = fresnel_r_s(n1, n2, thetaI);
+            const rp = fresnel_r_p(n1, n2, thetaI);
 
-            if (Math.abs(sinTi) > 1) {
-              // 전반사 구간: 여기서는 그래프에서 끊어지도록 null 처리
-              energies.push(E);
-              rsMagArr.push(null);
-              rpMagArr.push(null);
-              rsPhaseDegArr.push(null);
-              rpPhaseDegArr.push(null);
-              continue;
-            }
+            const absRs = rs.abs();
+            const absRp = rp.abs();
 
-            const thetaT = Math.asin(sinTi);
-            const rs = fresnel_r_s(n1, n2, thetaI, thetaT);
-            const rp = fresnel_r_p(n1, n2, thetaI, thetaT);
-
-            const absRs = Math.abs(rs);
-            const absRp = Math.abs(rp);
-
-            // 실수 r에 대한 위상: arg(r) = atan2(0, r) = 0 또는 π (rad)
-            const phaseRs = Math.atan2(0, rs);
-            const phaseRp = Math.atan2(0, rp);
+            const phaseRs = rs.arg(); // rad
+            const phaseRp = rp.arg(); // rad
 
             const phaseRsDeg = (phaseRs * 180) / Math.PI;
             const phaseRpDeg = (phaseRp * 180) / Math.PI;
@@ -440,7 +563,6 @@
             },
             yaxis: {
               title: "|r|",
-              range: [0, 1],
             },
             legend: {
               x: 0.02,
@@ -482,8 +604,6 @@
             },
             yaxis: {
               title: "Phase (deg)",
-              // -190 ~ 190 정도로 넉넉하게
-              range: [-200, 200],
             },
             legend: {
               x: 0.02,
