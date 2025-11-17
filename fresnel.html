@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>S-행렬 프레넬 시뮬레이터 | 광학 시뮬레이터</title>
+    <title>반사율·투과율 프레넬 시뮬레이터 | 광학 시뮬레이터</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       * {
@@ -150,8 +150,8 @@
         margin: 0 auto;
       }
 
-      #s-plot-mag,
-      #s-plot-phase {
+      #rt-plot-mag,
+      #rt-plot-phase {
         height: 320px;
         margin-top: 1rem;
       }
@@ -193,14 +193,14 @@
     </header>
 
     <main>
-      <h1>단일 인터페이스 S-행렬 시뮬레이터</h1>
+      <h1>반사율·투과율 프레넬 시뮬레이터</h1>
       <p class="subtitle">
-        복소 굴절률 n + i k 를 갖는 두 매질 사이 단일 인터페이스에 대해,
-        scattering matrix S = [[S<sub>11</sub>, S<sub>12</sub>],
-        [S<sub>21</sub>, S<sub>22</sub>]] 를 계산합니다.<br />
-        현재는 n, k를 에너지에 대해 상수로 두고, x축(에너지)을 스캔하면서
-        |S<sub>ij</sub>|와 arg S<sub>ij</sub>를 “수평선 형태”로 확인하는
-        테스트용 페이지입니다.
+        복소 굴절률 n + i k 를 갖는 두 매질 사이 단일 인터페이스에 대해,<br />
+        진폭 반사계수 r, 진폭 투과계수 t를 계산하고
+        반사율 R = |r|², 투과율 T = (Re(n₂ cosθ₂) / Re(n₁ cosθ₁)) |t|² 및
+        위상 arg r, arg t를 에너지에 대해 플롯합니다.<br />
+        현재는 n, k를 에너지에 대해 상수로 두었으므로, R(E), T(E), 위상은
+        에너지에 대해 수평선으로 나오는 것이 정상입니다.
       </p>
 
       <section class="card">
@@ -291,29 +291,27 @@
         </div>
 
         <button id="plot-btn">
-          S-행렬 4요소 |S<sub>ij</sub>|, arg S<sub>ij</sub> 계산 및 그래프 그리기
+          R, T 및 arg r, arg t 계산 및 그래프 그리기
         </button>
 
         <div id="error-box"></div>
 
         <p class="note">
-          ※ 단일 인터페이스이기 때문에, n<sub>1</sub>, k<sub>1</sub>,
-          n<sub>2</sub>, k<sub>2</sub>가 상수이면 S-행렬도 에너지에 대해 상수입니다.
-          따라서 그래프는 수평선처럼 나오는 것이 정상입니다. 이후 n(E), k(E)를
-          넣으면 S(E) 형태가 생깁니다.
+          ※ n<sub>1</sub>, k<sub>1</sub>, n<sub>2</sub>, k<sub>2</sub>가 상수인
+          한, r, t는 단일 인터페이스에서 에너지에 의존하지 않으므로
+          R(E), T(E), arg r(E), arg t(E)는 모두 “수평선”입니다. 나중에 n(E),
+          k(E)를 넣을 때 이 틀을 그대로 확장하면 됩니다.
         </p>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
-          |S<sub>11</sub>|, |S<sub>12</sub>|, |S<sub>21</sub>|, |S<sub>22</sub>| vs
-          Energy
+          반사율 R(E), 투과율 T(E)
         </h3>
-        <div id="s-plot-mag"></div>
+        <div id="rt-plot-mag"></div>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
-          arg S<sub>11</sub>, arg S<sub>12</sub>, arg S<sub>21</sub>, arg
-          S<sub>22</sub> vs Energy (deg)
+          위상 arg r(E), arg t(E) (deg)
         </h3>
-        <div id="s-plot-phase"></div>
+        <div id="rt-plot-phase"></div>
       </section>
 
       <a href="index.html" class="back-link"> ← 메인 페이지로 돌아가기 </a>
@@ -402,7 +400,8 @@
       }
 
       // --- 프레넬 계수 (복소 굴절률, 단일 인터페이스, s/p 공통) ---
-      function fresnel_interface(n1, n2, thetaI, pol) {
+      // r, t 및 에너지 플럭스 보정 factor 반환
+      function fresnel_rt(n1, n2, thetaI, pol) {
         var sinI = Math.sin(thetaI);
         var cosI = Math.cos(thetaI);
 
@@ -418,40 +417,31 @@
         var n2_cosI = n2.mulReal(cosI);
         var n1_cosT = n1.mul(cosT);
 
-        var r12, t12, r21, t21;
+        var r, t;
 
         if (pol === "s") {
           // s 편광
           var den_s = n1_cosI.add(n2_cosT);
-          r12 = n1_cosI.sub(n2_cosT).div(den_s);
-          t12 = n1_cosI.mulReal(2).div(den_s);
-
-          // 반대 방향
-          r21 = n2_cosT.sub(n1_cosI).div(den_s); // = -r12
-          t21 = n2_cosT.mulReal(2).div(den_s);
+          r = n1_cosI.sub(n2_cosT).div(den_s);
+          t = n1_cosI.mulReal(2).div(den_s);
         } else {
           // p 편광
           var den_p = n2_cosI.add(n1_cosT);
-          r12 = n2_cosI.sub(n1_cosT).div(den_p);
-          t12 = n1_cosI.mulReal(2).div(den_p);
-
-          r21 = n1_cosT.sub(n2_cosI).div(den_p);
-          t21 = n2_cosT.mulReal(2).div(den_p);
+          r = n2_cosI.sub(n1_cosT).div(den_p);
+          t = n1_cosI.mulReal(2).div(den_p);
         }
 
-        return { r12: r12, t12: t12, r21: r21, t21: t21 };
-      }
+        // 에너지 플럭스 보정 factor = Re(n2 cosθ2) / Re(n1 cosθ1)
+        var num = n2_cosT.re;
+        var den = n1_cosI.re;
+        var fluxFactor;
+        if (Math.abs(den) < 1e-12) {
+          fluxFactor = 1.0; // 비정상적인 경우는 일단 1로 처리
+        } else {
+          fluxFactor = num / den;
+        }
 
-      // S-행렬 구성
-      // [b1]   [S11 S12][a1]
-      // [b2] = [S21 S22][a2]
-      function scattering_matrix(n1, n2, thetaI, pol) {
-        var fr = fresnel_interface(n1, n2, thetaI, pol);
-        var S11 = fr.r12;
-        var S21 = fr.t12;
-        var S22 = fr.r21;
-        var S12 = fr.t21;
-        return { S11: S11, S12: S12, S21: S21, S22: S22 };
+        return { r: r, t: t, fluxFactor: fluxFactor };
       }
 
       document.addEventListener("DOMContentLoaded", function () {
@@ -505,106 +495,72 @@
           var n1 = Complex.from(n1Re, k1Im);
           var n2 = Complex.from(n2Re, k2Im);
 
-          var S = scattering_matrix(n1, n2, thetaI, pol);
-          var S11 = S.S11;
-          var S12 = S.S12;
-          var S21 = S.S21;
-          var S22 = S.S22;
+          var fr = fresnel_rt(n1, n2, thetaI, pol);
+          var r = fr.r;
+          var t = fr.t;
+          var fluxFactor = fr.fluxFactor;
 
           var energies = [];
-          var S11MagArr = [];
-          var S12MagArr = [];
-          var S21MagArr = [];
-          var S22MagArr = [];
+          var RArr = [];
+          var TArr = [];
+          var phaseRArr = [];
+          var phaseTArr = [];
 
-          var S11PhaseArr = [];
-          var S12PhaseArr = [];
-          var S21PhaseArr = [];
-          var S22PhaseArr = [];
+          var Rconst = r.abs() * r.abs();
+          var Tconst = fluxFactor * (t.abs() * t.abs());
+          var phaseRdeg = (r.arg() * 180) / Math.PI;
+          var phaseTdeg = (t.arg() * 180) / Math.PI;
 
           for (var i = 0; i < points; i++) {
-            var t = points === 1 ? 0 : i / (points - 1);
-            var E = Emin + (Emax - Emin) * t;
+            var tlin = points === 1 ? 0 : i / (points - 1);
+            var E = Emin + (Emax - Emin) * tlin;
 
             energies.push(E);
-
-            S11MagArr.push(S11.abs());
-            S12MagArr.push(S12.abs());
-            S21MagArr.push(S21.abs());
-            S22MagArr.push(S22.abs());
-
-            S11PhaseArr.push((S11.arg() * 180) / Math.PI);
-            S12PhaseArr.push((S12.arg() * 180) / Math.PI);
-            S21PhaseArr.push((S21.arg() * 180) / Math.PI);
-            S22PhaseArr.push((S22.arg() * 180) / Math.PI);
+            RArr.push(Rconst);
+            TArr.push(Tconst);
+            phaseRArr.push(phaseRdeg);
+            phaseTArr.push(phaseTdeg);
           }
 
-          // |S_ij| 그래프
-          var traceMag11 = {
+          // (1) R, T 그래프
+          var traceR = {
             x: energies,
-            y: S11MagArr,
-            name: "|S11|",
+            y: RArr,
+            name: "R = |r|²",
             mode: "lines",
           };
-          var traceMag12 = {
+          var traceT = {
             x: energies,
-            y: S12MagArr,
-            name: "|S12|",
-            mode: "lines",
-          };
-          var traceMag21 = {
-            x: energies,
-            y: S21MagArr,
-            name: "|S21|",
-            mode: "lines",
-          };
-          var traceMag22 = {
-            x: energies,
-            y: S22MagArr,
-            name: "|S22|",
+            y: TArr,
+            name: "T",
             mode: "lines",
           };
 
           var layoutMag = {
             margin: { t: 20, r: 10, b: 45, l: 50 },
             xaxis: { title: "Energy (eV)" },
-            yaxis: { title: "|S_ij|" },
+            yaxis: { title: "R, T" },
             legend: { x: 0.02, y: 0.98 },
             paper_bgcolor: "rgba(0,0,0,0)",
             plot_bgcolor: "rgba(15,23,42,0.9)",
             font: { color: "#e5e7eb" },
           };
 
-          Plotly.newPlot(
-            "s-plot-mag",
-            [traceMag11, traceMag12, traceMag21, traceMag22],
-            layoutMag,
-            { responsive: true }
-          );
+          Plotly.newPlot("rt-plot-mag", [traceR, traceT], layoutMag, {
+            responsive: true,
+          });
 
-          // 위상 그래프
-          var tracePhase11 = {
+          // (2) 위상 그래프
+          var tracePhaseR = {
             x: energies,
-            y: S11PhaseArr,
-            name: "arg S11",
+            y: phaseRArr,
+            name: "arg r (deg)",
             mode: "lines",
           };
-          var tracePhase12 = {
+          var tracePhaseT = {
             x: energies,
-            y: S12PhaseArr,
-            name: "arg S12",
-            mode: "lines",
-          };
-          var tracePhase21 = {
-            x: energies,
-            y: S21PhaseArr,
-            name: "arg S21",
-            mode: "lines",
-          };
-          var tracePhase22 = {
-            x: energies,
-            y: S22PhaseArr,
-            name: "arg S22",
+            y: phaseTArr,
+            name: "arg t (deg)",
             mode: "lines",
           };
 
@@ -619,8 +575,8 @@
           };
 
           Plotly.newPlot(
-            "s-plot-phase",
-            [tracePhase11, tracePhase12, tracePhase21, tracePhase22],
+            "rt-plot-phase",
+            [tracePhaseR, tracePhaseT],
             layoutPhase,
             { responsive: true }
           );
