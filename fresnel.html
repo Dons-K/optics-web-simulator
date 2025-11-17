@@ -95,16 +95,7 @@
         color: #cbd5f5;
       }
 
-      input[type="number"] {
-        margin-top: 0.25rem;
-        width: 100%;
-        padding: 0.4rem 0.5rem;
-        border-radius: 0.4rem;
-        border: 1px solid rgba(148, 163, 184, 0.5);
-        background: #020617;
-        color: #e5e7eb;
-      }
-
+      input[type="number"],
       select {
         margin-top: 0.25rem;
         width: 100%;
@@ -165,6 +156,12 @@
         margin-top: 1rem;
       }
 
+      #error-box {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #fca5a5;
+      }
+
       @media (max-width: 640px) {
         .nav-links {
           display: none;
@@ -198,13 +195,12 @@
     <main>
       <h1>단일 인터페이스 S-행렬 시뮬레이터</h1>
       <p class="subtitle">
-        Air–Film 단일 인터페이스에 대해, 복소 굴절률
-        n + i k 를 갖는 두 매질 사이의 scattering matrix
-        S = [[S<sub>11</sub>, S<sub>12</sub>], [S<sub>21</sub>, S<sub>22</sub>]
-        ]를 계산합니다.<br />
-        현재는 n, k를 에너지에 대해 상수로 두고, 에너지를 x축으로만 두어
-        |S<sub>ij</sub>|와 arg S<sub>ij</sub>가 올바르게 계산되는지 확인하는 용도의
-        페이지입니다. (나중에 n(E), k(E)를 넣으면 진짜 에너지 의존 S(E)로 확장 가능)
+        복소 굴절률 n + i k 를 갖는 두 매질 사이 단일 인터페이스에 대해,
+        scattering matrix S = [[S<sub>11</sub>, S<sub>12</sub>],
+        [S<sub>21</sub>, S<sub>22</sub>]] 를 계산합니다.<br />
+        현재는 n, k를 에너지에 대해 상수로 두고, x축(에너지)을 스캔하면서
+        |S<sub>ij</sub>|와 arg S<sub>ij</sub>를 “수평선 형태”로 확인하는
+        테스트용 페이지입니다.
       </p>
 
       <section class="card">
@@ -215,7 +211,7 @@
         <div class="form-grid">
           <div>
             <label>
-              편광 (s / p 선택)
+              편광 (s / p)
               <select id="pol-select">
                 <option value="s">s-polarization</option>
                 <option value="p">p-polarization</option>
@@ -260,7 +256,7 @@
           </div>
           <div>
             <label>
-              E<sub>min</sub> (eV, x축)
+              E<sub>min</sub> (eV, x축 시작)
               <input
                 type="number"
                 id="emin-input"
@@ -271,7 +267,7 @@
           </div>
           <div>
             <label>
-              E<sub>max</sub> (eV, x축)
+              E<sub>max</sub> (eV, x축 끝)
               <input
                 type="number"
                 id="emax-input"
@@ -298,17 +294,13 @@
           S-행렬 4요소 |S<sub>ij</sub>|, arg S<sub>ij</sub> 계산 및 그래프 그리기
         </button>
 
+        <div id="error-box"></div>
+
         <p class="note">
-          ※ 현재는 n<sub>1</sub>, k<sub>1</sub>, n<sub>2</sub>, k<sub>2</sub>를
-          에너지에 대해 상수로 두었습니다. 따라서 S(E)는 에너지에 대해
-          상수이고, 그래프는 수평선으로 나오는 것이 정상입니다. 이후 n(E),
-          k(E) 분산을 넣을 경우 이 틀을 그대로 사용하여 S(E)를 확장할 수
-          있습니다.<br />
-          ※ S-행렬 정의: a<sub>1</sub>, a<sub>2</sub>를 각각 좌/우에서 입사하는
-          파, b<sub>1</sub>, b<sub>2</sub>를 각각 좌/우로 반사/투과되어 나가는
-          파라고 하면,<br />
-          [ b<sub>1</sub> ] = S [ a<sub>1</sub> ] = [[S<sub>11</sub>,
-          S<sub>12</sub>], [S<sub>21</sub>, S<sub>22</sub>]] [ a<sub>1</sub> ] 입니다.
+          ※ 단일 인터페이스이기 때문에, n<sub>1</sub>, k<sub>1</sub>,
+          n<sub>2</sub>, k<sub>2</sub>가 상수이면 S-행렬도 에너지에 대해 상수입니다.
+          따라서 그래프는 수평선처럼 나오는 것이 정상입니다. 이후 n(E), k(E)를
+          넣으면 S(E) 형태가 생깁니다.
         </p>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
@@ -333,172 +325,160 @@
     </footer>
 
     <script>
-      document.getElementById("year")?.textContent =
-        new Date().getFullYear?.() ?? "";
+      // 연도 표시
+      (function () {
+        var y = document.getElementById("year");
+        if (y) {
+          y.textContent = new Date().getFullYear();
+        }
+      })();
 
       // --- 복소수 유틸리티 ---
-      class Complex {
-        constructor(re, im) {
-          this.re = re;
-          this.im = im;
-        }
-
-        static from(re, im) {
-          return new Complex(re, im);
-        }
-
-        static one() {
-          return new Complex(1, 0);
-        }
-
-        add(other) {
-          return new Complex(this.re + other.re, this.im + other.im);
-        }
-
-        sub(other) {
-          return new Complex(this.re - other.re, this.im - other.im);
-        }
-
-        mul(other) {
-          return new Complex(
-            this.re * other.re - this.im * other.im,
-            this.re * other.im + this.im * other.re
-          );
-        }
-
-        mulReal(a) {
-          return new Complex(this.re * a, this.im * a);
-        }
-
-        div(other) {
-          const den = other.re * other.re + other.im * other.im;
-          return new Complex(
-            (this.re * other.re + this.im * other.im) / den,
-            (this.im * other.re - this.re * other.im) / den
-          );
-        }
-
-        abs() {
-          return Math.hypot(this.re, this.im);
-        }
-
-        arg() {
-          return Math.atan2(this.im, this.re);
-        }
-
-        square() {
-          return this.mul(this);
-        }
-
-        sqrt() {
-          const x = this.re;
-          const y = this.im;
-          const r = Math.hypot(x, y);
-          if (r === 0) return new Complex(0, 0);
-          const u = Math.sqrt((r + x) / 2);
-          const v = Math.sqrt((r - x) / 2);
-          return new Complex(u, y >= 0 ? v : -v);
-        }
+      function Complex(re, im) {
+        this.re = re;
+        this.im = im;
       }
+
+      Complex.from = function (re, im) {
+        return new Complex(re, im);
+      };
+
+      Complex.one = function () {
+        return new Complex(1, 0);
+      };
+
+      Complex.prototype.add = function (o) {
+        return new Complex(this.re + o.re, this.im + o.im);
+      };
+
+      Complex.prototype.sub = function (o) {
+        return new Complex(this.re - o.re, this.im - o.im);
+      };
+
+      Complex.prototype.mul = function (o) {
+        return new Complex(
+          this.re * o.re - this.im * o.im,
+          this.re * o.im + this.im * o.re
+        );
+      };
+
+      Complex.prototype.mulReal = function (a) {
+        return new Complex(this.re * a, this.im * a);
+      };
+
+      Complex.prototype.div = function (o) {
+        var den = o.re * o.re + o.im * o.im;
+        return new Complex(
+          (this.re * o.re + this.im * o.im) / den,
+          (this.im * o.re - this.re * o.im) / den
+        );
+      };
+
+      Complex.prototype.abs = function () {
+        return Math.hypot(this.re, this.im);
+      };
+
+      Complex.prototype.arg = function () {
+        return Math.atan2(this.im, this.re);
+      };
+
+      Complex.prototype.square = function () {
+        return this.mul(this);
+      };
+
+      Complex.prototype.sqrt = function () {
+        var x = this.re;
+        var y = this.im;
+        var r = Math.hypot(x, y);
+        if (r === 0) return new Complex(0, 0);
+        var u = Math.sqrt((r + x) / 2);
+        var v = Math.sqrt((r - x) / 2);
+        if (y >= 0) return new Complex(u, v);
+        return new Complex(u, -v);
+      };
 
       function degToRad(deg) {
         return (deg * Math.PI) / 180;
       }
 
-      // --- 복소 굴절률에서의 프레넬 계수 (단일 인터페이스, s/p 공통) ---
+      // --- 프레넬 계수 (복소 굴절률, 단일 인터페이스, s/p 공통) ---
       function fresnel_interface(n1, n2, thetaI, pol) {
-        // n1, n2: Complex
-        // pol: "s" or "p"
-        const sinI = Math.sin(thetaI);
-        const cosI = Math.cos(thetaI);
+        var sinI = Math.sin(thetaI);
+        var cosI = Math.cos(thetaI);
 
-        // Snell: n1 * sinθ1 = n2 * sinθ2
-        const n1_sinI = n1.mulReal(sinI);
-        const sinT = n1_sinI.div(n2);
+        // Snell: n1 sinθ1 = n2 sinθ2
+        var n1_sinI = n1.mulReal(sinI);
+        var sinT = n1_sinI.div(n2);
 
-        const one = Complex.one();
-        const cosT = one.sub(sinT.square()).sqrt();
+        var one = Complex.one();
+        var cosT = one.sub(sinT.square()).sqrt();
 
-        const n1_cosI = n1.mulReal(cosI);
-        const n2_cosT = n2.mul(cosT);
-        const n2_cosI = n2.mulReal(cosI);
-        const n1_cosT = n1.mul(cosT);
+        var n1_cosI = n1.mulReal(cosI);
+        var n2_cosT = n2.mul(cosT);
+        var n2_cosI = n2.mulReal(cosI);
+        var n1_cosT = n1.mul(cosT);
 
-        let r12, t12, r21, t21;
+        var r12, t12, r21, t21;
+
         if (pol === "s") {
-          // s-polarization
-          // r12 = (n1 cosθ1 - n2 cosθ2) / (n1 cosθ1 + n2 cosθ2)
-          // t12 = 2 n1 cosθ1 / (n1 cosθ1 + n2 cosθ2)
-          const den_s = n1_cosI.add(n2_cosT);
+          // s 편광
+          var den_s = n1_cosI.add(n2_cosT);
           r12 = n1_cosI.sub(n2_cosT).div(den_s);
           t12 = n1_cosI.mulReal(2).div(den_s);
 
-          // 반대 방향 (2 -> 1)에서 보면
-          // r21 = (n2 cosθ2 - n1 cosθ1) / (n2 cosθ2 + n1 cosθ1) = -r12
-          // t21 = 2 n2 cosθ2 / (n2 cosθ2 + n1 cosθ1)
+          // 반대 방향
           r21 = n2_cosT.sub(n1_cosI).div(den_s); // = -r12
           t21 = n2_cosT.mulReal(2).div(den_s);
         } else {
-          // p-polarization
-          // r12 = (n2 cosθ1 - n1 cosθ2) / (n2 cosθ1 + n1 cosθ2)
-          // t12 = 2 n1 cosθ1 / (n2 cosθ1 + n1 cosθ2)
-          const den_p = n2_cosI.add(n1_cosT);
+          // p 편광
+          var den_p = n2_cosI.add(n1_cosT);
           r12 = n2_cosI.sub(n1_cosT).div(den_p);
           t12 = n1_cosI.mulReal(2).div(den_p);
 
-          // r21, t21
-          // r21 = (n1 cosθ2 - n2 cosθ1) / (n1 cosθ2 + n2 cosθ1) = -r12
-          // t21 = 2 n2 cosθ2 / (n1 cosθ2 + n2 cosθ1)
           r21 = n1_cosT.sub(n2_cosI).div(den_p);
           t21 = n2_cosT.mulReal(2).div(den_p);
         }
 
-        return { r12, t12, r21, t21 };
+        return { r12: r12, t12: t12, r21: r21, t21: t21 };
       }
 
-      // S-행렬 구성:
+      // S-행렬 구성
       // [b1]   [S11 S12][a1]
       // [b2] = [S21 S22][a2]
-      // a2=0인 경우, S11 = 반사(r12), S21 = 투과(t12)
-      // a1=0인 경우, S22 = r21, S12 = t21
       function scattering_matrix(n1, n2, thetaI, pol) {
-        const { r12, t12, r21, t21 } = fresnel_interface(
-          n1,
-          n2,
-          thetaI,
-          pol
-        );
-        const S11 = r12;
-        const S21 = t12;
-        const S22 = r21;
-        const S12 = t21;
-        return { S11, S12, S21, S22 };
+        var fr = fresnel_interface(n1, n2, thetaI, pol);
+        var S11 = fr.r12;
+        var S21 = fr.t12;
+        var S22 = fr.r21;
+        var S12 = fr.t21;
+        return { S11: S11, S12: S12, S21: S21, S22: S22 };
       }
 
       document.addEventListener("DOMContentLoaded", function () {
-        const polSelect = document.getElementById("pol-select");
-        const thetaInput = document.getElementById("theta-input");
-        const n1Input = document.getElementById("n1-input");
-        const k1Input = document.getElementById("k1-input");
-        const n2Input = document.getElementById("n2-input");
-        const k2Input = document.getElementById("k2-input");
-
-        const eminInput = document.getElementById("emin-input");
-        const emaxInput = document.getElementById("emax-input");
-        const pointsInput = document.getElementById("points-input");
-        const plotBtn = document.getElementById("plot-btn");
+        var polSelect = document.getElementById("pol-select");
+        var thetaInput = document.getElementById("theta-input");
+        var n1Input = document.getElementById("n1-input");
+        var k1Input = document.getElementById("k1-input");
+        var n2Input = document.getElementById("n2-input");
+        var k2Input = document.getElementById("k2-input");
+        var eminInput = document.getElementById("emin-input");
+        var emaxInput = document.getElementById("emax-input");
+        var pointsInput = document.getElementById("points-input");
+        var plotBtn = document.getElementById("plot-btn");
+        var errorBox = document.getElementById("error-box");
 
         plotBtn.addEventListener("click", function () {
-          const pol = polSelect.value; // "s" or "p"
-          const thetaDeg = parseFloat(thetaInput.value);
-          const n1Re = parseFloat(n1Input.value);
-          const k1Im = parseFloat(k1Input.value);
-          const n2Re = parseFloat(n2Input.value);
-          const k2Im = parseFloat(k2Input.value);
+          errorBox.textContent = "";
 
-          const Emin = parseFloat(eminInput.value);
-          const Emax = parseFloat(emaxInput.value);
-          let points = parseInt(pointsInput.value, 10);
+          var pol = polSelect.value;
+          var thetaDeg = parseFloat(thetaInput.value);
+          var n1Re = parseFloat(n1Input.value);
+          var k1Im = parseFloat(k1Input.value);
+          var n2Re = parseFloat(n2Input.value);
+          var k2Im = parseFloat(k2Input.value);
+          var Emin = parseFloat(eminInput.value);
+          var Emax = parseFloat(emaxInput.value);
+          var points = parseInt(pointsInput.value, 10);
 
           if (
             !isFinite(thetaDeg) ||
@@ -509,44 +489,42 @@
             !isFinite(Emin) ||
             !isFinite(Emax)
           ) {
-            alert("입력값을 다시 확인해주세요.");
+            errorBox.textContent = "입력값을 다시 확인해주세요.";
             return;
           }
 
           if (Emax <= Emin) {
-            alert("Emax는 Emin보다 커야 합니다.");
+            errorBox.textContent = "Emax는 Emin보다 커야 합니다.";
             return;
           }
 
           if (!isFinite(points) || points < 10) points = 10;
           if (points > 600) points = 600;
 
-          const thetaI = degToRad(thetaDeg);
-          const n1 = Complex.from(n1Re, k1Im);
-          const n2 = Complex.from(n2Re, k2Im);
+          var thetaI = degToRad(thetaDeg);
+          var n1 = Complex.from(n1Re, k1Im);
+          var n2 = Complex.from(n2Re, k2Im);
 
-          // 단일 인터페이스 S-행렬 (에너지와 무관, 상수)
-          const { S11, S12, S21, S22 } = scattering_matrix(
-            n1,
-            n2,
-            thetaI,
-            pol
-          );
+          var S = scattering_matrix(n1, n2, thetaI, pol);
+          var S11 = S.S11;
+          var S12 = S.S12;
+          var S21 = S.S21;
+          var S22 = S.S22;
 
-          const energies = [];
-          const S11MagArr = [];
-          const S12MagArr = [];
-          const S21MagArr = [];
-          const S22MagArr = [];
+          var energies = [];
+          var S11MagArr = [];
+          var S12MagArr = [];
+          var S21MagArr = [];
+          var S22MagArr = [];
 
-          const S11PhaseArr = [];
-          const S12PhaseArr = [];
-          const S21PhaseArr = [];
-          const S22PhaseArr = [];
+          var S11PhaseArr = [];
+          var S12PhaseArr = [];
+          var S21PhaseArr = [];
+          var S22PhaseArr = [];
 
-          for (let i = 0; i < points; i++) {
-            const t = points === 1 ? 0 : i / (points - 1);
-            const E = Emin + (Emax - Emin) * t;
+          for (var i = 0; i < points; i++) {
+            var t = points === 1 ? 0 : i / (points - 1);
+            var E = Emin + (Emax - Emin) * t;
 
             energies.push(E);
 
@@ -561,49 +539,40 @@
             S22PhaseArr.push((S22.arg() * 180) / Math.PI);
           }
 
-          // (1) |S_ij| 그래프
-          const traceMag11 = {
+          // |S_ij| 그래프
+          var traceMag11 = {
             x: energies,
             y: S11MagArr,
             name: "|S11|",
             mode: "lines",
           };
-          const traceMag12 = {
+          var traceMag12 = {
             x: energies,
             y: S12MagArr,
             name: "|S12|",
             mode: "lines",
           };
-          const traceMag21 = {
+          var traceMag21 = {
             x: energies,
             y: S21MagArr,
             name: "|S21|",
             mode: "lines",
           };
-          const traceMag22 = {
+          var traceMag22 = {
             x: energies,
             y: S22MagArr,
             name: "|S22|",
             mode: "lines",
           };
 
-          const layoutMag = {
+          var layoutMag = {
             margin: { t: 20, r: 10, b: 45, l: 50 },
-            xaxis: {
-              title: "Energy (eV)",
-            },
-            yaxis: {
-              title: "|S_ij|",
-            },
-            legend: {
-              x: 0.02,
-              y: 0.98,
-            },
+            xaxis: { title: "Energy (eV)" },
+            yaxis: { title: "|S_ij|" },
+            legend: { x: 0.02, y: 0.98 },
             paper_bgcolor: "rgba(0,0,0,0)",
-            plot_bgcolor: "rgba(15, 23, 42, 0.9)",
-            font: {
-              color: "#e5e7eb",
-            },
+            plot_bgcolor: "rgba(15,23,42,0.9)",
+            font: { color: "#e5e7eb" },
           };
 
           Plotly.newPlot(
@@ -613,49 +582,40 @@
             { responsive: true }
           );
 
-          // (2) arg S_ij 그래프 (deg)
-          const tracePhase11 = {
+          // 위상 그래프
+          var tracePhase11 = {
             x: energies,
             y: S11PhaseArr,
             name: "arg S11",
             mode: "lines",
           };
-          const tracePhase12 = {
+          var tracePhase12 = {
             x: energies,
             y: S12PhaseArr,
             name: "arg S12",
             mode: "lines",
           };
-          const tracePhase21 = {
+          var tracePhase21 = {
             x: energies,
             y: S21PhaseArr,
             name: "arg S21",
             mode: "lines",
           };
-          const tracePhase22 = {
+          var tracePhase22 = {
             x: energies,
             y: S22PhaseArr,
             name: "arg S22",
             mode: "lines",
           };
 
-          const layoutPhase = {
+          var layoutPhase = {
             margin: { t: 20, r: 10, b: 45, l: 50 },
-            xaxis: {
-              title: "Energy (eV)",
-            },
-            yaxis: {
-              title: "Phase (deg)",
-            },
-            legend: {
-              x: 0.02,
-              y: 0.98,
-            },
+            xaxis: { title: "Energy (eV)" },
+            yaxis: { title: "Phase (deg)" },
+            legend: { x: 0.02, y: 0.98 },
             paper_bgcolor: "rgba(0,0,0,0)",
-            plot_bgcolor: "rgba(15, 23, 42, 0.9)",
-            font: {
-              color: "#e5e7eb",
-            },
+            plot_bgcolor: "rgba(15,23,42,0.9)",
+            font: { color: "#e5e7eb" },
           };
 
           Plotly.newPlot(
