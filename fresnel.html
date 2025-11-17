@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>프레넬 계수 에너지 스윕 | 광학 시뮬레이터</title>
+    <title>S-행렬 프레넬 시뮬레이터 | 광학 시뮬레이터</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       * {
@@ -105,6 +105,16 @@
         color: #e5e7eb;
       }
 
+      select {
+        margin-top: 0.25rem;
+        width: 100%;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.4rem;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        background: #020617;
+        color: #e5e7eb;
+      }
+
       button {
         font-size: 0.9rem;
         padding: 0.55rem 1.1rem;
@@ -149,9 +159,8 @@
         margin: 0 auto;
       }
 
-      #fresnel-plot-mag,
-      #fresnel-plot-phase,
-      #nk-plot {
+      #s-plot-mag,
+      #s-plot-phase {
         height: 320px;
         margin-top: 1rem;
       }
@@ -187,15 +196,15 @@
     </header>
 
     <main>
-      <h1>프레넬 계수 에너지 스윕 (복소 굴절률)</h1>
+      <h1>단일 인터페이스 S-행렬 시뮬레이터</h1>
       <p class="subtitle">
-        Air–Film 단일 인터페이스에서 복소 굴절률
-        n + i k 를 갖는 두 매질 사이의 프레넬 계수
-        r<sub>s</sub>, r<sub>p</sub>를 계산합니다.
-        에너지에 따라 n<sub>2</sub>(E), k<sub>2</sub>(E)가 선형으로 변한다고 가정하여
-        |r<sub>s</sub>|, |r<sub>p</sub>|와 위상 δ<sub>s</sub>, δ<sub>p</sub>를
-        E에 대해 플롯합니다. 아래 세 번째 그래프에서는 계산에 실제로 사용된
-        n(E), k(E)도 함께 확인할 수 있습니다.
+        Air–Film 단일 인터페이스에 대해, 복소 굴절률
+        n + i k 를 갖는 두 매질 사이의 scattering matrix
+        S = [[S<sub>11</sub>, S<sub>12</sub>], [S<sub>21</sub>, S<sub>22</sub>]
+        ]를 계산합니다.<br />
+        현재는 n, k를 에너지에 대해 상수로 두고, 에너지를 x축으로만 두어
+        |S<sub>ij</sub>|와 arg S<sub>ij</sub>가 올바르게 계산되는지 확인하는 용도의
+        페이지입니다. (나중에 n(E), k(E)를 넣으면 진짜 에너지 의존 S(E)로 확장 가능)
       </p>
 
       <section class="card">
@@ -204,6 +213,15 @@
         </h2>
 
         <div class="form-grid">
+          <div>
+            <label>
+              편광 (s / p 선택)
+              <select id="pol-select">
+                <option value="s">s-polarization</option>
+                <option value="p">p-polarization</option>
+              </select>
+            </label>
+          </div>
           <div>
             <label>
               입사각 θ<sub>i</sub> (deg)
@@ -230,7 +248,19 @@
           </div>
           <div>
             <label>
-              E<sub>min</sub> (eV)
+              n<sub>2</sub> (전달측, 실수부)
+              <input type="number" id="n2-input" value="2.0" step="0.01" />
+            </label>
+          </div>
+          <div>
+            <label>
+              k<sub>2</sub> (전달측, 허수부)
+              <input type="number" id="k2-input" value="0.0" step="0.01" />
+            </label>
+          </div>
+          <div>
+            <label>
+              E<sub>min</sub> (eV, x축)
               <input
                 type="number"
                 id="emin-input"
@@ -241,7 +271,7 @@
           </div>
           <div>
             <label>
-              E<sub>max</sub> (eV)
+              E<sub>max</sub> (eV, x축)
               <input
                 type="number"
                 id="emax-input"
@@ -252,55 +282,11 @@
           </div>
           <div>
             <label>
-              n<sub>2</sub>(E<sub>min</sub>)
-              <input
-                type="number"
-                id="n2-emin-input"
-                value="2.0"
-                step="0.01"
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              k<sub>2</sub>(E<sub>min</sub>)
-              <input
-                type="number"
-                id="k2-emin-input"
-                value="0.0"
-                step="0.01"
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              n<sub>2</sub>(E<sub>max</sub>)
-              <input
-                type="number"
-                id="n2-emax-input"
-                value="2.5"
-                step="0.01"
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              k<sub>2</sub>(E<sub>max</sub>)
-              <input
-                type="number"
-                id="k2-emax-input"
-                value="0.1"
-                step="0.01"
-              />
-            </label>
-          </div>
-          <div>
-            <label>
               에너지 샘플 수 (points)
               <input
                 type="number"
                 id="points-input"
-                value="120"
+                value="100"
                 min="10"
                 max="600"
               />
@@ -309,31 +295,33 @@
         </div>
 
         <button id="plot-btn">
-          에너지 범위에 대해 프레넬 계수 계산 및 그래프 그리기
+          S-행렬 4요소 |S<sub>ij</sub>|, arg S<sub>ij</sub> 계산 및 그래프 그리기
         </button>
 
         <p class="note">
-          ※ n<sub>2</sub>(E), k<sub>2</sub>(E)는 E<sub>min</sub>과
-          E<sub>max</sub> 사이에서 선형 보간합니다. 실제 분산 데이터 n(E), k(E)를
-          사용하고 싶다면, 이 부분을 테이블/모델로 교체하면 됩니다.
-          복소 굴절률에서 r은 일반 복소수이므로, δ(E) = arg r(E)는
-          0~π를 넘나드는 일반적인 위상 곡선으로 나타납니다.
+          ※ 현재는 n<sub>1</sub>, k<sub>1</sub>, n<sub>2</sub>, k<sub>2</sub>를
+          에너지에 대해 상수로 두었습니다. 따라서 S(E)는 에너지에 대해
+          상수이고, 그래프는 수평선으로 나오는 것이 정상입니다. 이후 n(E),
+          k(E) 분산을 넣을 경우 이 틀을 그대로 사용하여 S(E)를 확장할 수
+          있습니다.<br />
+          ※ S-행렬 정의: a<sub>1</sub>, a<sub>2</sub>를 각각 좌/우에서 입사하는
+          파, b<sub>1</sub>, b<sub>2</sub>를 각각 좌/우로 반사/투과되어 나가는
+          파라고 하면,<br />
+          [ b<sub>1</sub> ] = S [ a<sub>1</sub> ] = [[S<sub>11</sub>,
+          S<sub>12</sub>], [S<sub>21</sub>, S<sub>22</sub>]] [ a<sub>1</sub> ] 입니다.
         </p>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
-          |r<sub>s</sub>|, |r<sub>p</sub>| vs Energy
+          |S<sub>11</sub>|, |S<sub>12</sub>|, |S<sub>21</sub>|, |S<sub>22</sub>| vs
+          Energy
         </h3>
-        <div id="fresnel-plot-mag"></div>
+        <div id="s-plot-mag"></div>
 
         <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
-          δ<sub>s</sub>, δ<sub>p</sub> vs Energy (deg)
+          arg S<sub>11</sub>, arg S<sub>12</sub>, arg S<sub>21</sub>, arg
+          S<sub>22</sub> vs Energy (deg)
         </h3>
-        <div id="fresnel-plot-phase"></div>
-
-        <h3 style="font-size: 0.95rem; margin-top: 1.2rem">
-          n(E), k(E) vs Energy (계산에 사용된 광학 상수)
-        </h3>
-        <div id="nk-plot"></div>
+        <div id="s-plot-phase"></div>
       </section>
 
       <a href="index.html" class="back-link"> ← 메인 페이지로 돌아가기 </a>
@@ -345,8 +333,8 @@
     </footer>
 
     <script>
-      document.getElementById("year").textContent =
-        new Date().getFullYear();
+      document.getElementById("year")?.textContent =
+        new Date().getFullYear?.() ?? "";
 
       // --- 복소수 유틸리티 ---
       class Complex {
@@ -417,11 +405,14 @@
         return (deg * Math.PI) / 180;
       }
 
-      // --- 복소 굴절률에서의 프레넬 계수 (단일 인터페이스) ---
-      function fresnel_r_s(n1, n2, thetaI) {
+      // --- 복소 굴절률에서의 프레넬 계수 (단일 인터페이스, s/p 공통) ---
+      function fresnel_interface(n1, n2, thetaI, pol) {
+        // n1, n2: Complex
+        // pol: "s" or "p"
         const sinI = Math.sin(thetaI);
         const cosI = Math.cos(thetaI);
 
+        // Snell: n1 * sinθ1 = n2 * sinθ2
         const n1_sinI = n1.mulReal(sinI);
         const sinT = n1_sinI.div(n2);
 
@@ -430,70 +421,93 @@
 
         const n1_cosI = n1.mulReal(cosI);
         const n2_cosT = n2.mul(cosT);
-
-        const num = n1_cosI.sub(n2_cosT);
-        const den = n1_cosI.add(n2_cosT);
-        return num.div(den);
-      }
-
-      function fresnel_r_p(n1, n2, thetaI) {
-        const sinI = Math.sin(thetaI);
-        const cosI = Math.cos(thetaI);
-
-        const n1_sinI = n1.mulReal(sinI);
-        const sinT = n1_sinI.div(n2);
-        const one = Complex.one();
-        const cosT = one.sub(sinT.square()).sqrt();
-
         const n2_cosI = n2.mulReal(cosI);
         const n1_cosT = n1.mul(cosT);
 
-        const num = n2_cosI.sub(n1_cosT);
-        const den = n2_cosI.add(n1_cosT);
-        return num.div(den);
+        let r12, t12, r21, t21;
+        if (pol === "s") {
+          // s-polarization
+          // r12 = (n1 cosθ1 - n2 cosθ2) / (n1 cosθ1 + n2 cosθ2)
+          // t12 = 2 n1 cosθ1 / (n1 cosθ1 + n2 cosθ2)
+          const den_s = n1_cosI.add(n2_cosT);
+          r12 = n1_cosI.sub(n2_cosT).div(den_s);
+          t12 = n1_cosI.mulReal(2).div(den_s);
+
+          // 반대 방향 (2 -> 1)에서 보면
+          // r21 = (n2 cosθ2 - n1 cosθ1) / (n2 cosθ2 + n1 cosθ1) = -r12
+          // t21 = 2 n2 cosθ2 / (n2 cosθ2 + n1 cosθ1)
+          r21 = n2_cosT.sub(n1_cosI).div(den_s); // = -r12
+          t21 = n2_cosT.mulReal(2).div(den_s);
+        } else {
+          // p-polarization
+          // r12 = (n2 cosθ1 - n1 cosθ2) / (n2 cosθ1 + n1 cosθ2)
+          // t12 = 2 n1 cosθ1 / (n2 cosθ1 + n1 cosθ2)
+          const den_p = n2_cosI.add(n1_cosT);
+          r12 = n2_cosI.sub(n1_cosT).div(den_p);
+          t12 = n1_cosI.mulReal(2).div(den_p);
+
+          // r21, t21
+          // r21 = (n1 cosθ2 - n2 cosθ1) / (n1 cosθ2 + n2 cosθ1) = -r12
+          // t21 = 2 n2 cosθ2 / (n1 cosθ2 + n2 cosθ1)
+          r21 = n1_cosT.sub(n2_cosI).div(den_p);
+          t21 = n2_cosT.mulReal(2).div(den_p);
+        }
+
+        return { r12, t12, r21, t21 };
+      }
+
+      // S-행렬 구성:
+      // [b1]   [S11 S12][a1]
+      // [b2] = [S21 S22][a2]
+      // a2=0인 경우, S11 = 반사(r12), S21 = 투과(t12)
+      // a1=0인 경우, S22 = r21, S12 = t21
+      function scattering_matrix(n1, n2, thetaI, pol) {
+        const { r12, t12, r21, t21 } = fresnel_interface(
+          n1,
+          n2,
+          thetaI,
+          pol
+        );
+        const S11 = r12;
+        const S21 = t12;
+        const S22 = r21;
+        const S12 = t21;
+        return { S11, S12, S21, S22 };
       }
 
       document.addEventListener("DOMContentLoaded", function () {
+        const polSelect = document.getElementById("pol-select");
         const thetaInput = document.getElementById("theta-input");
         const n1Input = document.getElementById("n1-input");
         const k1Input = document.getElementById("k1-input");
+        const n2Input = document.getElementById("n2-input");
+        const k2Input = document.getElementById("k2-input");
 
         const eminInput = document.getElementById("emin-input");
         const emaxInput = document.getElementById("emax-input");
-
-        const n2EminInput = document.getElementById("n2-emin-input");
-        const k2EminInput = document.getElementById("k2-emin-input");
-        const n2EmaxInput = document.getElementById("n2-emax-input");
-        const k2EmaxInput = document.getElementById("k2-emax-input");
-
         const pointsInput = document.getElementById("points-input");
         const plotBtn = document.getElementById("plot-btn");
 
         plotBtn.addEventListener("click", function () {
+          const pol = polSelect.value; // "s" or "p"
           const thetaDeg = parseFloat(thetaInput.value);
           const n1Re = parseFloat(n1Input.value);
           const k1Im = parseFloat(k1Input.value);
+          const n2Re = parseFloat(n2Input.value);
+          const k2Im = parseFloat(k2Input.value);
 
           const Emin = parseFloat(eminInput.value);
           const Emax = parseFloat(emaxInput.value);
-
-          const n2Emin = parseFloat(n2EminInput.value);
-          const k2Emin = parseFloat(k2EminInput.value);
-          const n2Emax = parseFloat(n2EmaxInput.value);
-          const k2Emax = parseFloat(k2EmaxInput.value);
-
           let points = parseInt(pointsInput.value, 10);
 
           if (
             !isFinite(thetaDeg) ||
             !isFinite(n1Re) ||
             !isFinite(k1Im) ||
+            !isFinite(n2Re) ||
+            !isFinite(k2Im) ||
             !isFinite(Emin) ||
-            !isFinite(Emax) ||
-            !isFinite(n2Emin) ||
-            !isFinite(k2Emin) ||
-            !isFinite(n2Emax) ||
-            !isFinite(k2Emax)
+            !isFinite(Emax)
           ) {
             alert("입력값을 다시 확인해주세요.");
             return;
@@ -509,61 +523,67 @@
 
           const thetaI = degToRad(thetaDeg);
           const n1 = Complex.from(n1Re, k1Im);
+          const n2 = Complex.from(n2Re, k2Im);
+
+          // 단일 인터페이스 S-행렬 (에너지와 무관, 상수)
+          const { S11, S12, S21, S22 } = scattering_matrix(
+            n1,
+            n2,
+            thetaI,
+            pol
+          );
 
           const energies = [];
-          const rsMagArr = [];
-          const rpMagArr = [];
-          const rsPhaseDegArr = [];
-          const rpPhaseDegArr = [];
+          const S11MagArr = [];
+          const S12MagArr = [];
+          const S21MagArr = [];
+          const S22MagArr = [];
 
-          const n2ReArr = [];
-          const k2ImArr = [];
+          const S11PhaseArr = [];
+          const S12PhaseArr = [];
+          const S21PhaseArr = [];
+          const S22PhaseArr = [];
 
           for (let i = 0; i < points; i++) {
             const t = points === 1 ? 0 : i / (points - 1);
             const E = Emin + (Emax - Emin) * t;
 
-            const n2Re = n2Emin + (n2Emax - n2Emin) * t;
-            const k2Im = k2Emin + (k2Emax - k2Emin) * t;
-            const n2 = Complex.from(n2Re, k2Im);
-
-            const rs = fresnel_r_s(n1, n2, thetaI);
-            const rp = fresnel_r_p(n1, n2, thetaI);
-
-            const absRs = rs.abs();
-            const absRp = rp.abs();
-
-            const phaseRs = rs.arg();
-            const phaseRp = rp.arg();
-
-            const phaseRsDeg = (phaseRs * 180) / Math.PI;
-            const phaseRpDeg = (phaseRp * 180) / Math.PI;
-
             energies.push(E);
-            rsMagArr.push(absRs);
-            rpMagArr.push(absRp);
-            rsPhaseDegArr.push(phaseRsDeg);
-            rpPhaseDegArr.push(phaseRpDeg);
 
-            n2ReArr.push(n2Re);
-            k2ImArr.push(k2Im);
+            S11MagArr.push(S11.abs());
+            S12MagArr.push(S12.abs());
+            S21MagArr.push(S21.abs());
+            S22MagArr.push(S22.abs());
+
+            S11PhaseArr.push((S11.arg() * 180) / Math.PI);
+            S12PhaseArr.push((S12.arg() * 180) / Math.PI);
+            S21PhaseArr.push((S21.arg() * 180) / Math.PI);
+            S22PhaseArr.push((S22.arg() * 180) / Math.PI);
           }
 
-          const n1ReArr = energies.map(() => n1Re);
-          const k1ImArr = energies.map(() => k1Im);
-
-          // (1) |r| 그래프
-          const traceMagS = {
+          // (1) |S_ij| 그래프
+          const traceMag11 = {
             x: energies,
-            y: rsMagArr,
-            name: "|r_s|",
+            y: S11MagArr,
+            name: "|S11|",
             mode: "lines",
           };
-
-          const traceMagP = {
+          const traceMag12 = {
             x: energies,
-            y: rpMagArr,
-            name: "|r_p|",
+            y: S12MagArr,
+            name: "|S12|",
+            mode: "lines",
+          };
+          const traceMag21 = {
+            x: energies,
+            y: S21MagArr,
+            name: "|S21|",
+            mode: "lines",
+          };
+          const traceMag22 = {
+            x: energies,
+            y: S22MagArr,
+            name: "|S22|",
             mode: "lines",
           };
 
@@ -573,7 +593,7 @@
               title: "Energy (eV)",
             },
             yaxis: {
-              title: "|r|",
+              title: "|S_ij|",
             },
             legend: {
               x: 0.02,
@@ -587,24 +607,35 @@
           };
 
           Plotly.newPlot(
-            "fresnel-plot-mag",
-            [traceMagS, traceMagP],
+            "s-plot-mag",
+            [traceMag11, traceMag12, traceMag21, traceMag22],
             layoutMag,
             { responsive: true }
           );
 
-          // (2) 위상 그래프
-          const tracePhaseS = {
+          // (2) arg S_ij 그래프 (deg)
+          const tracePhase11 = {
             x: energies,
-            y: rsPhaseDegArr,
-            name: "δ_s",
+            y: S11PhaseArr,
+            name: "arg S11",
             mode: "lines",
           };
-
-          const tracePhaseP = {
+          const tracePhase12 = {
             x: energies,
-            y: rpPhaseDegArr,
-            name: "δ_p",
+            y: S12PhaseArr,
+            name: "arg S12",
+            mode: "lines",
+          };
+          const tracePhase21 = {
+            x: energies,
+            y: S21PhaseArr,
+            name: "arg S21",
+            mode: "lines",
+          };
+          const tracePhase22 = {
+            x: energies,
+            y: S22PhaseArr,
+            name: "arg S22",
             mode: "lines",
           };
 
@@ -628,64 +659,9 @@
           };
 
           Plotly.newPlot(
-            "fresnel-plot-phase",
-            [tracePhaseS, tracePhaseP],
+            "s-plot-phase",
+            [tracePhase11, tracePhase12, tracePhase21, tracePhase22],
             layoutPhase,
-            { responsive: true }
-          );
-
-          // (3) n(E), k(E) 그래프
-          const traceN1 = {
-            x: energies,
-            y: n1ReArr,
-            name: "n1 (real)",
-            mode: "lines",
-          };
-
-          const traceK1 = {
-            x: energies,
-            y: k1ImArr,
-            name: "k1 (imag)",
-            mode: "lines",
-          };
-
-          const traceN2 = {
-            x: energies,
-            y: n2ReArr,
-            name: "n2(E)",
-            mode: "lines",
-          };
-
-          const traceK2 = {
-            x: energies,
-            y: k2ImArr,
-            name: "k2(E)",
-            mode: "lines",
-          };
-
-          const layoutNK = {
-            margin: { t: 20, r: 10, b: 45, l: 50 },
-            xaxis: {
-              title: "Energy (eV)",
-            },
-            yaxis: {
-              title: "n, k",
-            },
-            legend: {
-              x: 0.02,
-              y: 0.98,
-            },
-            paper_bgcolor: "rgba(0,0,0,0)",
-            plot_bgcolor: "rgba(15, 23, 42, 0.9)",
-            font: {
-              color: "#e5e7eb",
-            },
-          };
-
-          Plotly.newPlot(
-            "nk-plot",
-            [traceN1, traceK1, traceN2, traceK2],
-            layoutNK,
             { responsive: true }
           );
         });
