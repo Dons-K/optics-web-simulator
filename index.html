@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Web Optical Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A browser-based simulator for the optical response of solids: thin-film and bulk reflectance, magneto-reflectance in a magnetic field, temperature dependence, ellipsometry (Ψ, Δ), and Fresnel coefficients with their phases."
+    />
+    <meta name="author" content="Hyun Don Kim (김현돈)" />
+    <style>
+      :root {
+        --maxw: 1200px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #050816;
+        color: #e5e7eb;
+        line-height: 1.6;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(12px);
+        background: rgba(5, 8, 22, 0.8);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .nav-inner {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        font-size: 1.05rem;
+      }
+
+      .logo span {
+        color: #38bdf8;
+      }
+
+      .nav-links a {
+        margin-left: 1.25rem;
+        font-size: 0.9rem;
+        text-decoration: none;
+        color: #9ca3af;
+      }
+
+      .nav-links a:hover {
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 2.5rem 2rem 3.5rem;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
+        gap: 2rem;
+        align-items: center;
+        margin-top: 1.5rem;
+        margin-bottom: 3rem;
+      }
+
+      .hero-title {
+        font-size: clamp(2.1rem, 3.2vw, 3.2rem);
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-title span {
+        color: #38bdf8;
+      }
+
+      .hero-subtitle {
+        font-size: 0.98rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .tag {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        color: #e5e7eb;
+      }
+
+      .hero-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .btn-primary,
+      .btn-ghost {
+        font-size: 0.9rem;
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        color: #0b1120;
+        font-weight: 600;
+      }
+
+      .btn-primary span {
+        font-size: 1.1rem;
+      }
+
+      .btn-ghost {
+        border-color: rgba(148, 163, 184, 0.6);
+        color: #e5e7eb;
+        background: transparent;
+      }
+
+      .btn-ghost:hover {
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      .hero-card {
+        border-radius: 1.25rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.1),
+            transparent
+          ),
+          radial-gradient(
+            circle at bottom right,
+            rgba(34, 197, 94, 0.12),
+            transparent
+          ),
+          #020617;
+        padding: 1.25rem 1.35rem;
+      }
+
+      .hero-card-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .hero-card-title span {
+        font-size: 1.2rem;
+      }
+
+      .hero-card-desc {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-card-list {
+        list-style: none;
+        font-size: 0.83rem;
+        color: #cbd5f5;
+      }
+
+      .hero-card-list li {
+        margin-bottom: 0.35rem;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 999px;
+        background: #22c55e;
+        margin-right: 0.35rem;
+      }
+
+      .dot.open {
+        background: transparent;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+      }
+
+      section {
+        margin-bottom: 2.5rem;
+      }
+
+      section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+      }
+
+      section p {
+        font-size: 0.9rem;
+        color: #d1d5db;
+        margin-bottom: 0.5rem;
+        max-width: 72ch;
+      }
+
+      .feature p {
+        max-width: none;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      @media (min-width: 1100px) {
+        .feature-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+      }
+
+      .feature {
+        border-radius: 0.9rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.8);
+        padding: 0.9rem;
+        font-size: 0.85rem;
+      }
+
+      .feature-title {
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+      }
+
+      footer {
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 1rem 1.25rem 2rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+        max-width: var(--maxw);
+        margin: 0 auto;
+      }
+
+      @media (max-width: 768px) {
+        .hero {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .nav-links {
+          display: none;
+        }
+
+        main {
+          padding-top: 1.5rem;
+        }
+      }
+      /* 태블릿 & 작은 화면 (가로 ~768px 이하) */
+      @media (max-width: 768px) {
+        main {
+          padding: 1.75rem 1.25rem 2.5rem;
+        }
+
+        .hero {
+          grid-template-columns: minmax(0, 1fr); /* 위/아래로 쌓기 (이미 있었는데 유지) */
+          gap: 1.5rem;
+          margin-top: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .feature-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)); /* 3열 → 2열 */
+        }
+      }
+        /* 모바일 폰 (가로 ~480px 이하) */
+      @media (max-width: 480px) {
+        body {
+          font-size: 14px;
+        }
+
+        main {
+          padding: 1.5rem 1rem 2rem;
+        }
+
+        .hero-title {
+          font-size: 1.6rem;
+          line-height: 1.3;
+        }
+
+        .hero-subtitle {
+          font-size: 0.9rem;
+        }
+
+        .hero-buttons {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .btn-primary,
+        .btn-ghost {
+          justify-content: center;
+          width: 100%;      /* 버튼을 한 줄 가득 채우기 */
+        }
+
+        .feature-grid {
+          grid-template-columns: minmax(0, 1fr); /* 카드 1열 */
+        }
+
+        section h2 {
+          font-size: 1.05rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-inner">
+        <div class="logo">
+          Web Optical <span>Simulator</span>
+        </div>
+        <nav class="nav-links">
+          <a href="#about">About</a>
+          <a href="#features">Features</a>
+          <a href="#contact">Research &amp; Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <h1 class="hero-title">
+            The optical response of solids,<br />
+            <span>simulated in your browser</span>
+          </h1>
+          <p class="hero-subtitle">
+            Reflectance and phase computed from a dielectric function — for thin
+            films and bulk crystals alike, and as a function of magnetic field and
+            temperature. A Fresnel coefficient calculator and a LaSb
+            magneto-reflectance simulator are available now; multilayer
+            reflectance, ellipsometry (Ψ, Δ), and phase analysis of
+            δ<sub>p</sub> and δ<sub>s</sub> come next.
+          </p>
+
+          <div class="hero-tags">
+            <span class="tag">Thin Film Optics</span>
+            <span class="tag">Bulk Reflectance</span>
+            <span class="tag">Ellipsometry (Ψ, Δ)</span>
+            <span class="tag">Fresnel Coefficients</span>
+            <span class="tag">Magneto-optics</span>
+            <span class="tag">Temperature Dependence</span>
+            <span class="tag">Web Simulator</span>
+            <span class="tag">In Development</span>
+          </div>
+
+          <div class="hero-buttons">
+            <a href="fresnel.html" class="btn-primary">
+              <span>▶</span>
+              Fresnel Coefficient Calculator
+            </a>
+            <a href="lasb.html" class="btn-primary">
+              <span>▶</span>
+              LaSb Magneto-Reflectance Simulator
+            </a>
+            <a href="#features" class="btn-ghost">
+              See planned features
+            </a>
+          </div>
+        </div>
+
+        <aside class="hero-card">
+          <div class="hero-card-title">
+            <span>◎</span> Status: two simulators available
+          </div>
+          <p class="hero-card-desc">
+            A web simulator for the optical properties of solids — thin films,
+            bulk crystals, and their response to magnetic field and temperature —
+            intended for both teaching and research. Below, ● marks what is
+            available and ○ what is planned.
+          </p>
+          <ul class="hero-card-list">
+            <li>
+              <span class="dot"></span>Single-interface Fresnel coefficients r, t
+              and phases arg r, arg t
+            </li>
+            <li>
+              <span class="dot"></span>Bulk reflectance vs. magnetic field and
+              temperature (LaSb; Drude · Lorentz, ε±)
+            </li>
+            <li><span class="dot open"></span>Reflectance and transmittance of multilayers</li>
+            <li><span class="dot open"></span>Ψ, Δ and tanΨ, tanΔ visualization</li>
+            <li><span class="dot open"></span>s-Brewster and special-angle search</li>
+            <li><span class="dot open"></span>Design tool for defect-absorption (ε₂) enhancement</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section id="about">
+        <h2>About this site</h2>
+        <p>
+          This project grew out of research on enhancing and detecting very weak
+          absorption signals in optical thin-film structures, and has since widened
+          to the optical response of bulk materials under magnetic field and
+          varying temperature. The aim is to move the dielectric-function modeling
+          and transfer-matrix calculations used in the lab into a form anyone can
+          explore with only a web browser.
+        </p>
+        <p>
+          The goal is to combine accuracy sufficient for research use with
+          visualizations intuitive enough for teaching.
+        </p>
+        <p>
+          Developed by Hyun Don Kim, based on ongoing experimental work on
+          thin-film optics and ellipsometry in the Department of Physics,
+          University of Seoul.
+        </p>
+      </section>
+
+      <section id="features">
+        <h2>Features (partly implemented)</h2>
+        <div class="feature-grid">
+          <article class="feature">
+            <div class="feature-title">1. Multilayer TMM simulator</div>
+            <p>
+              Starting from air / film / substrate and extending to three or more
+              layers with an inserted film, R and T are computed by the transfer
+              matrix method and plotted.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">2. Ellipsometric Ψ, Δ</div>
+            <p>
+              Ψ, Δ and tanΨ will be derived from the s- and p-polarized reflection
+              coefficients and presented in a format comparable to experimental
+              data from V-VASE or CompleteEASE.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">3. Defect-absorption enhancement design</div>
+            <p>
+              A design tool in which a very weak Lorentz oscillator is added to ε₂,
+              and the resulting enhancement of δΨ and δΔ can be examined while
+              tuning the inserted-layer thickness and the angle of incidence.
+            </p>
+          </article>
+
+          <article class="feature">
+            <div class="feature-title">4. Fresnel coefficients and phase (partly implemented)</div>
+            <p>
+              The single-interface case is already available on the Fresnel page.
+              The plan is to visualize |r<sub>p</sub>|, |r<sub>s</sub>| and the
+              phases δ<sub>p</sub>, δ<sub>s</sub> at each interface against
+              wavelength and angle of incidence, making their relation to the
+              Brewster and s-Brewster special angles apparent.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="contact">
+        <h2>Research &amp; contact</h2>
+        <p>
+          This site is developed as a personal research project, intended for use
+          as a public simulator, a teaching demonstration, and a supporting tool
+          for papers and presentations.
+        </p>
+        <p>
+          Links to the GitHub repository, papers and preprints, and tutorial
+          documents will be collected in this section.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      © <span id="year"></span> Web Optical Simulator. All rights reserved.
+      <br />
+      Built &amp; developed by Hyun Don Kim.
+      <script>
+        document.getElementById("year").textContent =
+          new Date().getFullYear();
+      </script>
+    </footer>
+  </body>
+</html>
