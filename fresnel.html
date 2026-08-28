@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multilayer TMM simulator — R, T, arg r</title>
+<style>
+  :root{
+    --panel:#14171c; --panel2:#1b1f26; --ink:#e8e6e1; --dim:#8b929e;
+    --line:#2a2f38; --acc:#f89540; --paper:#ffffff; --grid:#e7e5e0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background:var(--panel); color:var(--ink); height:100vh; overflow:hidden;
+  }
+  :root{--tabh:36px}
+  .tabbar{position:fixed; top:0; left:0; right:0; height:var(--tabh);
+    background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:stretch; z-index:20}
+  .tabbar button{background:transparent; border:0; color:var(--dim);
+    padding:0 18px; font-size:12px; font-weight:600; cursor:pointer;
+    border-right:1px solid var(--line)}
+  .tabbar button.on{background:var(--panel); color:var(--acc);
+    box-shadow:inset 0 -2px 0 var(--acc)}
+  .tabbar .home{margin-left:auto; display:flex; align-items:center;
+    padding:0 18px; font-size:12px; font-weight:600; text-decoration:none;
+    color:var(--dim); border-left:1px solid var(--line)}
+  .tabbar .home:hover{color:var(--acc)}
+
+  .app{display:grid; grid-template-columns:var(--sidew,400px) 1fr; gap:0;
+       height:calc(100vh - var(--tabh)); margin-top:var(--tabh); overflow:hidden}
+  @media (max-width:900px){
+    body{height:auto; overflow:auto}
+    .app{grid-template-columns:1fr; height:auto; overflow:visible}
+    aside, main{height:auto; overflow:visible}
+  }
+
+  #sidegrip{position:fixed; top:var(--tabh); bottom:0; width:6px; cursor:col-resize;
+    left:calc(var(--sidew,400px) - 3px); z-index:15}
+  #sidegrip:hover{background:var(--acc); opacity:.4}
+  aside{background:var(--panel2); border-right:1px solid var(--line);
+        padding:18px 16px 40px; height:calc(100vh - var(--tabh));
+        overflow-y:auto; overflow-x:hidden}
+  h1{font-size:14px; font-weight:600; letter-spacing:.4px; margin-bottom:2px}
+  .sub{font-size:11px; color:var(--dim); margin-bottom:16px; line-height:1.5}
+  .sec{border-top:1px solid var(--line); padding:12px 0 14px}
+  .sec h2{font-size:11px; font-weight:600; color:var(--acc);
+          text-transform:uppercase; letter-spacing:1.2px; margin-bottom:10px}
+  .row{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+  .row label{flex:0 0 116px; font-size:12px; color:var(--dim)}
+  .row input[type=number], .row input[type=text], select{
+    flex:1; min-width:0; background:var(--panel); color:var(--ink);
+    border:1px solid var(--line); border-radius:4px; padding:4px 6px;
+    font:12px ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  input[type=range]{flex:1; accent-color:var(--acc); min-width:0}
+  .toggle{display:flex; border:1px solid var(--line); border-radius:4px; overflow:hidden}
+  .toggle button{background:transparent; color:var(--dim); border:0;
+    padding:3px 10px; font-size:11px; cursor:pointer}
+  .toggle button.on{background:var(--acc); color:#14171c; font-weight:700}
+  .note{font-size:10.5px; color:var(--dim); line-height:1.5; margin-top:6px}
+  .presets{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+  .presets button{background:var(--panel); color:var(--dim); border:1px solid var(--line);
+    border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer}
+  .presets button:hover{color:var(--ink); border-color:var(--dim)}
+
+  #stackwrap{background:var(--panel); border:1px solid var(--line);
+             border-radius:6px; padding:10px}
+  #stack{width:100%; display:block; cursor:pointer}
+  #stack text{font:11px ui-monospace, "SF Mono", Consolas, monospace;
+              fill:#0d0f13; pointer-events:none}
+  #stack text.pale{fill:#e8e6e1}
+  .stackbtns{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+  .stackbtns button{background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:4px; padding:4px 10px;
+    font-size:11px; cursor:pointer}
+  .stackbtns button:hover{border-color:var(--acc); color:var(--acc)}
+  .stackbtns button:disabled{opacity:.35; cursor:not-allowed}
+  .stackbtns button:disabled:hover{border-color:var(--line); color:var(--ink)}
+  #selname{font:600 11px system-ui; color:var(--acc); letter-spacing:1.2px;
+           text-transform:uppercase; margin-bottom:10px}
+
+  main{padding:18px 20px 30px; display:flex; flex-direction:column; gap:12px;
+       height:calc(100vh - var(--tabh)); overflow-y:auto; overflow-x:hidden}
+  #plotwrap{display:grid; grid-template-columns:repeat(var(--cols,2),1fr); gap:12px}
+  .plotbox{background:var(--paper); border:1px solid var(--grid); border-radius:8px;
+           padding:6px}
+  .plotbox > div{width:100%; height:var(--ph,340px)}
+
+  .readout{background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+           padding:12px 14px;
+           font:var(--rofs,14px) ui-monospace, "SF Mono", Consolas, monospace;
+           line-height:1.9}
+  .readout h3{font:600 11px system-ui; color:var(--acc); letter-spacing:1.2px;
+              text-transform:uppercase; margin-bottom:8px}
+  .readout table{border-collapse:collapse; width:100%}
+  .readout th{color:var(--dim); font-weight:400; text-align:right;
+              padding:0 14px 4px 0; border-bottom:1px solid var(--line);
+              font-size:calc(var(--rofs,14px) - 2px)}
+  .readout th:first-child{text-align:left}
+  .readout td{text-align:right; padding:3px 14px 0 0; white-space:nowrap}
+  .readout td:first-child{text-align:left; color:var(--dim)}
+  .readout .g{color:var(--dim)}
+  .readout .warn{color:#ff7a6e}
+  .chips{display:flex; flex-wrap:wrap; gap:18px; margin-top:10px;
+         font-size:calc(var(--rofs,14px) - 1px)}
+  .chips b{color:var(--acc); font-weight:600}
+</style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+<div class="tabbar">
+  <button id="tabA" class="on">다층막 TMM 시뮬레이터</button>
+  <a class="home" href="index.html">← 홈으로</a>
+</div>
+
+<div id="sidegrip" title="드래그해서 폭 조절"></div>
+<div class="app" id="pageA">
+
+<aside>
+  <h1>Multilayer TMM simulator</h1>
+  <div class="sub">Ambient / 박막 N층 / 기판. 각 층은 복소 굴절률 N = n + i k 와
+    두께 d [nm]를 갖습니다. 특성행렬법으로 r, t를 구하고
+    R = |r|², T = [Re(η<sub>sub</sub>)/Re(η₀)]·|t|² 를 계산합니다.
+    규약: e<sup>−iωt</sup>, N₁sinθ₁ = N₂sinθ₂.</div>
+
+  <div class="sec">
+    <h2>구조</h2>
+    <div id="stackwrap"><svg id="stack"></svg></div>
+    <div class="stackbtns">
+      <button id="addBtn">＋ 막 추가</button>
+      <button id="delBtn">－ 선택 삭제</button>
+      <button id="upBtn">▲ 위로</button>
+      <button id="dnBtn">▼ 아래로</button>
+    </div>
+    <div class="note">그림에서 층을 클릭하면 아래에서 그 층의 광학상수를 조절합니다.
+      「막 추가」는 선택한 층 바로 아래에 새 층을 넣습니다.</div>
+    <div class="presets">
+      <button data-preset="bare">기판만</button>
+      <button data-preset="ar">단층 AR (λ/4)</button>
+      <button data-preset="sio2si">SiO₂ / Si</button>
+      <button data-preset="dbr">DBR 4쌍</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2 id="selname">선택: —</h2>
+    <div class="row"><label>n</label>
+      <input type="range" id="nS" min="0.1" max="5" step="0.001" value="1">
+      <input type="number" id="n" value="1" step="0.01" style="flex:0 0 78px"></div>
+    <div class="row"><label>k</label>
+      <input type="range" id="kS" min="0" max="10" step="0.001" value="0">
+      <input type="number" id="k" value="0" step="0.01" style="flex:0 0 78px"></div>
+    <div class="row" id="dRow"><label>두께 d [nm]</label>
+      <input type="range" id="dS" min="1" max="2000" step="1" value="100">
+      <input type="number" id="d" value="100" step="1" style="flex:0 0 78px"></div>
+    <div class="note" id="dNote">Ambient와 기판은 반무한이므로 두께가 없습니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2>기하 · 파장</h2>
+    <div class="row"><label>입사각 θᵢ [deg]</label>
+      <input type="range" id="thetaS" min="0" max="89.9" step="0.1" value="0">
+      <input type="number" id="theta" value="0" step="0.1" style="flex:0 0 78px"></div>
+    <div class="row"><label>E₀ [eV]</label>
+      <input type="range" id="e0S" min="0.05" max="6" step="0.001" value="1.9587">
+      <input type="number" id="e0" value="1.9587" step="0.001" style="flex:0 0 78px"></div>
+    <div class="row"><label>편광 표시</label>
+      <div class="toggle" id="polTog">
+        <button data-v="both" class="on">s + p</button>
+        <button data-v="s">s</button>
+        <button data-v="p">p</button>
+      </div></div>
+    <div class="note">E₀는 판독표와 입사각 스윕의 기준 에너지입니다.
+      1.9587 eV = 633 nm (He-Ne).</div>
+  </div>
+
+  <div class="sec">
+    <h2>x축 · 범위</h2>
+    <div class="row"><label>x축</label>
+      <div class="toggle" id="xTog">
+        <button data-v="theta" class="on">입사각</button>
+        <button data-v="E">에너지</button>
+      </div></div>
+    <div class="row"><label>Emin [eV]</label>
+      <input type="range" id="eminS" min="0.05" max="6" step="0.01" value="0.5">
+      <input type="number" id="emin" value="0.5" step="0.01" style="flex:0 0 78px"></div>
+    <div class="row"><label>Emax [eV]</label>
+      <input type="range" id="emaxS" min="0.1" max="12" step="0.01" value="4">
+      <input type="number" id="emax" value="4" step="0.01" style="flex:0 0 78px"></div>
+    <div class="row"><label>샘플 수</label>
+      <input type="range" id="nptsS" min="21" max="2001" step="10" value="601">
+      <input type="number" id="npts" value="601" step="10" style="flex:0 0 78px"></div>
+    <div class="note">두께가 있는 층이 있으면 에너지 축에서 간섭 무늬가 나타납니다.
+      n, k는 에너지에 무관한 상수로 두었습니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2>표시</h2>
+    <div class="row"><label>열 수</label>
+      <div class="toggle" id="colTog">
+        <button data-v="2" class="on">2열</button>
+        <button data-v="1">1열</button>
+      </div></div>
+    <div class="row"><label>그래프 높이</label>
+      <input type="range" id="phS" min="220" max="620" step="10" value="340">
+      <input type="number" id="ph" value="340" step="10" style="flex:0 0 78px"></div>
+    <div class="row"><label>판독표 글씨</label>
+      <input type="range" id="rofsS" min="11" max="20" step="1" value="14">
+      <input type="number" id="rofs" value="14" step="1" style="flex:0 0 78px"></div>
+  </div>
+</aside>
+
+<main>
+  <div id="plotwrap">
+    <div class="plotbox"><div id="plotMag"></div></div>
+    <div class="plotbox"><div id="plotPhase"></div></div>
+  </div>
+
+  <div class="readout">
+    <h3>현재 조건에서의 값</h3>
+    <table id="tbl"></table>
+    <div class="chips" id="chips"></div>
+  </div>
+</main>
+</div>
+
+<script>
+"use strict";
+
+/* ═══════════════ complex arithmetic ═══════════════ */
+function C(re, im){ return { re:re, im:im }; }
+function cadd(a,b){ return C(a.re+b.re, a.im+b.im); }
+function csub(a,b){ return C(a.re-b.re, a.im-b.im); }
+function cmul(a,b){ return C(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re); }
+function cmulr(a,s){ return C(a.re*s, a.im*s); }
+function cdiv(a,b){
+  var d = b.re*b.re + b.im*b.im;
+  return C((a.re*b.re + a.im*b.im)/d, (a.im*b.re - a.re*b.im)/d);
+}
+function cabs(a){ return Math.hypot(a.re, a.im); }
+function carg(a){ return Math.atan2(a.im, a.re); }
+function csqrt(a){
+  var r = cabs(a), th = carg(a)/2, s = Math.sqrt(r);
+  return C(s*Math.cos(th), s*Math.sin(th));
+}
+function cexp(z){ var e = Math.exp(z.re); return C(e*Math.cos(z.im), e*Math.sin(z.im)); }
+function deg2rad(x){ return x*Math.PI/180; }
+
+/* ═══════════════ stack model ═══════════════ */
+var stack = {
+  ambient:   { n:1.0, k:0.0 },
+  layers:    [ { n:1.4570, k:0.0, d:100 } ],
+  substrate: { n:3.8817, k:0.0193 }
+};
+var sel = { kind:"layer", i:0 };
+
+function selNode(){
+  if(sel.kind === "ambient")   return stack.ambient;
+  if(sel.kind === "substrate") return stack.substrate;
+  return stack.layers[sel.i];
+}
+function selLabel(){
+  if(sel.kind === "ambient")   return "Ambient (입사측, 반무한)";
+  if(sel.kind === "substrate") return "Substrate (기판, 반무한)";
+  return "Layer " + (sel.i + 1) + " (박막)";
+}
+function selKey(){ return sel.kind === "layer" ? ("layer:" + sel.i) : sel.kind; }
+
+/* ═══════════════ transfer matrix method ═══════════════ */
+/*
+   규약: e^{i(kz − ωt)},  N = n + i k  (k > 0 이 흡수)
+
+   각 계면의 프레넬 계수 r_ij, t_ij 와 층 내부의 전파 위상
+       δ_i = k₀ d_i N_i cosθ_i
+   를 2×2 전달행렬로 엮습니다.
+
+       P_i = (1/t_{i,i+1}) · [[e^{−iδ_i}, 0], [0, e^{+iδ_i}]] · [[1, r_{i,i+1}], [r_{i,i+1}, 1]]
+       M   = (1/t_{01})·[[1, r_{01}], [r_{01}, 1]] · Π_i P_i
+       r = M₁₀ / M₀₀,   t = 1 / M₀₀
+
+   층이 없으면 M = 첫 계면 행렬이 되어 단일 계면 프레넬과 정확히 일치합니다.
+   r_p 는 (N_j cosθ_i − N_i cosθ_j)/(N_j cosθ_i + N_i cosθ_j) 규약을 씁니다.
+*/
+function tmm(E_eV, thetaDeg, pol){
+  var lam = 1239.841984 / E_eV;
+  var k0  = 2*Math.PI / lam;
+  var i;
+
+  var Nl = [ C(stack.ambient.n, stack.ambient.k) ];
+  var dl = [ Infinity ];
+  for(i=0; i<stack.layers.length; i++){
+    Nl.push(C(stack.layers[i].n, stack.layers[i].k));
+    dl.push(stack.layers[i].d);
+  }
+  Nl.push(C(stack.substrate.n, stack.substrate.k));
+  dl.push(Infinity);
+  var nL = Nl.length;
+
+  /* Snell 불변량 N sinθ = const, 감쇠 분지 Im(cosθ) ≥ 0 */
+  var q = cmulr(Nl[0], Math.sin(deg2rad(thetaDeg)));
+  var cs = [];
+  for(i=0; i<nL; i++){
+    var sn = cdiv(q, Nl[i]);
+    var cc = csqrt(csub(C(1,0), cmul(sn, sn)));
+    if(cc.im < 0) cc = cmulr(cc, -1);
+    cs.push(cc);
+  }
+
+  function rij(a, b){
+    if(pol === "s"){
+      var u = cmul(Nl[a], cs[a]), v = cmul(Nl[b], cs[b]);
+      return cdiv(csub(u, v), cadd(u, v));
+    }
+    var w = cmul(Nl[b], cs[a]), z = cmul(Nl[a], cs[b]);
+    return cdiv(csub(w, z), cadd(w, z));
+  }
+  function tij(a, b){
+    var u = cmul(Nl[a], cs[a]);
+    if(pol === "s") return cdiv(cmulr(u, 2), cadd(u, cmul(Nl[b], cs[b])));
+    return cdiv(cmulr(u, 2), cadd(cmul(Nl[b], cs[a]), cmul(Nl[a], cs[b])));
+  }
+  function mm(A, B){
+    return [
+      [ cadd(cmul(A[0][0],B[0][0]), cmul(A[0][1],B[1][0])),
+        cadd(cmul(A[0][0],B[0][1]), cmul(A[0][1],B[1][1])) ],
+      [ cadd(cmul(A[1][0],B[0][0]), cmul(A[1][1],B[1][0])),
+        cadd(cmul(A[1][0],B[0][1]), cmul(A[1][1],B[1][1])) ]
+    ];
+  }
+  function scale(A, t){
+    return [[ cdiv(A[0][0],t), cdiv(A[0][1],t) ],
+            [ cdiv(A[1][0],t), cdiv(A[1][1],t) ]];
+  }
+
+  var M = [[C(1,0), C(0,0)], [C(0,0), C(1,0)]];
+  for(i=1; i<=nL-2; i++){
+    var dlt = cmulr(cmul(Nl[i], cs[i]), k0 * dl[i]);
+    var em = cexp(C( dlt.im, -dlt.re));          // e^{−iδ}
+    var ep = cexp(C(-dlt.im,  dlt.re));          // e^{+iδ}
+    var rr = rij(i, i+1);
+    var P = mm([[em, C(0,0)], [C(0,0), ep]],
+               [[C(1,0), rr], [rr, C(1,0)]]);
+    M = mm(M, scale(P, tij(i, i+1)));
+  }
+  var r01 = rij(0, 1);
+  M = mm(scale([[C(1,0), r01], [r01, C(1,0)]], tij(0, 1)), M);
+
+  var r = cdiv(M[1][0], M[0][0]);
+  var t = cdiv(C(1,0),  M[0][0]);
+
+  var numF = cmul(Nl[nL-1], cs[nL-1]).re;
+  var denF = cmul(Nl[0],    cs[0]).re;
+  var fluxFactor = (Math.abs(denF) < 1e-14) ? 0 : numF/denF;
+
+  return { r:r, t:t, R:cabs(r)*cabs(r), T:fluxFactor*cabs(t)*cabs(t),
+           fluxFactor:fluxFactor };
+}
+
+/* ═══════════════ DOM helpers ═══════════════ */
+function $(id){ return document.getElementById(id); }
+function num(id){ return parseFloat($(id).value); }
+
+var FIELDS = { theta:"입사각 θᵢ", e0:"E₀", n:"n", k:"k",
+               emin:"Emin", emax:"Emax", npts:"샘플 수" };
+function badFields(){
+  var bad = [];
+  for(var id in FIELDS){
+    if(!isFinite(parseFloat($(id).value))) bad.push(FIELDS[id]);
+  }
+  if(sel.kind === "layer" && !isFinite(parseFloat($("d").value))) bad.push("두께 d");
+  if(isFinite(parseFloat($("npts").value)) && Math.round(num("npts")) < 2)
+    bad.push("샘플 수(2 이상)");
+  if(isFinite(parseFloat($("e0").value)) && num("e0") <= 0) bad.push("E₀(0 초과)");
+  var all = [stack.ambient, stack.substrate].concat(stack.layers);
+  for(var i=0;i<all.length;i++){
+    if(!isFinite(all[i].n) || !isFinite(all[i].k)) bad.push("스택의 n·k");
+    if(all[i].d !== undefined && !isFinite(all[i].d)) bad.push("스택의 두께");
+  }
+  return bad;
+}
+
+function link(id, onChange){
+  var box = $(id), sld = $(id + "S");
+  if(sld){
+    sld.addEventListener("input", function(){ box.value = sld.value; onChange(); });
+    box.addEventListener("input", function(){
+      var v = parseFloat(box.value);
+      if(isFinite(v)) sld.value = v;
+      onChange();
+    });
+  } else {
+    box.addEventListener("input", onChange);
+  }
+}
+function setPair(id, v){
+  $(id).value = v;
+  if($(id + "S")) $(id + "S").value = v;
+}
+function toggle(id, cb){
+  var wrap = $(id);
+  wrap.addEventListener("click", function(e){
+    var b = e.target.closest("button");
+    if(!b) return;
+    wrap.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    cb(b.dataset.v);
+  });
+}
+var state = { pol:"both", xaxis:"theta" };
+
+/* ═══════════════ schematic ═══════════════ */
+function layerColor(n, k){
+  var t = Math.max(0, Math.min(1, (n - 1) / 3.2));
+  var hue = 205 - 175*t;
+  var light = 78 - 26*t;
+  var sat = (k > 0.05) ? 18 : 46;
+  return "hsl(" + hue.toFixed(0) + "," + sat + "%," + light.toFixed(0) + "%)";
+}
+
+function drawStack(){
+  var svg = $("stack");
+  var W = svg.clientWidth || 340;
+  var capH = 34;
+  var L = stack.layers;
+
+  var hs = [], dmax = 1, i;
+  for(i=0;i<L.length;i++) dmax = Math.max(dmax, L[i].d || 0);
+  for(i=0;i<L.length;i++){
+    var frac = Math.sqrt(Math.max(L[i].d, 0)) / Math.sqrt(dmax);
+    hs.push(24 + 46*frac);
+  }
+  var totH = capH*2 + hs.reduce(function(a,b){ return a+b; }, 0);
+  svg.setAttribute("viewBox", "0 0 " + W + " " + totH);
+  svg.setAttribute("height", totH);
+
+  var parts = [], y = 0;
+  parts.push('<defs><pattern id="hatch" width="7" height="7" ' +
+    'patternTransform="rotate(45)" patternUnits="userSpaceOnUse">' +
+    '<line x1="0" y1="0" x2="0" y2="7" stroke="#555" stroke-width="1.6"/>' +
+    '</pattern></defs>');
+
+  function band(h, fill, label, sub, id, pale, hatch){
+    var on = (id === selKey());
+    parts.push('<rect data-id="' + id + '" x="0" y="' + y + '" width="' + W +
+      '" height="' + h + '" fill="' + fill + '"' +
+      (on ? ' stroke="#f89540" stroke-width="2.5"'
+          : ' stroke="#2a2f38" stroke-width="1"') + '/>');
+    if(hatch){
+      parts.push('<rect data-id="' + id + '" x="0" y="' + y + '" width="' + W +
+                 '" height="' + h + '" fill="url(#hatch)" opacity="0.45"/>');
+    }
+    var cls = pale ? ' class="pale"' : '';
+    parts.push('<text' + cls + ' x="10" y="' + (y + h/2 + 4) + '">' + label + '</text>');
+    if(sub){
+      parts.push('<text' + cls + ' x="' + (W-10) + '" y="' + (y + h/2 + 4) +
+                 '" text-anchor="end">' + sub + '</text>');
+    }
+    y += h;
+  }
+
+  var A = stack.ambient;
+  band(capH, "#0f1216", "Ambient",
+       "n=" + A.n.toFixed(3) + (A.k ? "  k=" + A.k.toFixed(3) : ""),
+       "ambient", true, false);
+
+  for(i=0;i<L.length;i++){
+    band(hs[i], layerColor(L[i].n, L[i].k), "Layer " + (i+1),
+         "n=" + L[i].n.toFixed(3) + (L[i].k ? "  k=" + L[i].k.toFixed(3) : "") +
+         "   d=" + L[i].d + "nm",
+         "layer:" + i, false, L[i].k > 0.05);
+  }
+
+  var S = stack.substrate;
+  band(capH, layerColor(S.n, S.k), "Substrate",
+       "n=" + S.n.toFixed(3) + (S.k ? "  k=" + S.k.toFixed(3) : ""),
+       "substrate", false, S.k > 0.05);
+
+  svg.innerHTML = parts.join("");
+}
+
+function syncSelInputs(){
+  var nd = selNode();
+  setPair("n", nd.n);
+  setPair("k", nd.k);
+  var isLayer = (sel.kind === "layer");
+  $("dRow").style.display  = isLayer ? "" : "none";
+  $("dNote").style.display = isLayer ? "none" : "";
+  if(isLayer) setPair("d", nd.d);
+  $("selname").textContent = "선택: " + selLabel();
+  $("delBtn").disabled = !isLayer;
+  $("upBtn").disabled  = !isLayer || sel.i === 0;
+  $("dnBtn").disabled  = !isLayer || sel.i === stack.layers.length - 1;
+}
+
+/* ═══════════════ plotting ═══════════════ */
+var LAY = {
+  paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff",
+  font:{ family:"ui-monospace, SF Mono, Consolas, monospace", size:11, color:"#333" },
+  margin:{ l:58, r:16, t:34, b:46 },
+  xaxis:{ gridcolor:"#e7e5e0", zeroline:false },
+  yaxis:{ gridcolor:"#e7e5e0", zeroline:false },
+  legend:{ orientation:"h", y:1.14, x:0, font:{size:10} },
+  hovermode:"x unified"
+};
+var CFG = { displayModeBar:false, responsive:true };
+var COL = { Rs:"#1f77b4", Rp:"#d62728", Ts:"#2ca02c", Tp:"#ff7f0e" };
+function want(w){ return state.pol === "both" || state.pol === w; }
+
+function draw(){
+  var bad = badFields();
+  if(bad.length){
+    $("tbl").innerHTML = "";
+    $("chips").innerHTML = "<span class='warn'>입력값을 읽을 수 없습니다: " +
+      bad.join(", ") + " — 숫자를 채워 주세요.</span>";
+    return;
+  }
+
+  var N = Math.max(21, Math.round(num("npts")));
+  var useTheta = (state.xaxis === "theta");
+  var xs = [], i;
+  if(useTheta){
+    for(i=0;i<N;i++) xs.push(89.9*i/(N-1));
+  } else {
+    var a = num("emin"), b = num("emax");
+    for(i=0;i<N;i++) xs.push(a + (b-a)*i/(N-1));
+  }
+
+  var Rs=[],Rp=[],Ts=[],Tp=[],Ps=[],Pp=[],PsT=[],PpT=[];
+  for(i=0;i<xs.length;i++){
+    var E  = useTheta ? num("e0") : xs[i];
+    var th = useTheta ? xs[i]     : num("theta");
+    var s = tmm(E, th, "s"), p = tmm(E, th, "p");
+    Rs.push(s.R); Rp.push(p.R); Ts.push(s.T); Tp.push(p.T);
+    Ps.push(carg(s.r)*180/Math.PI);  Pp.push(carg(p.r)*180/Math.PI);
+    PsT.push(carg(s.t)*180/Math.PI); PpT.push(carg(p.t)*180/Math.PI);
+  }
+
+  var xt = useTheta ? "입사각 θᵢ [deg]" : "에너지 [eV]";
+  function tr(y,name,color,dash){
+    return { x:xs, y:y, name:name, mode:"lines", type:"scatter",
+             line:{ color:color, width:2, dash:dash||"solid" } };
+  }
+  var showT = !(stack.ambient.k > 0);
+  var lines = [];
+  if(want("s")){ lines.push(tr(Rs,"R_s",COL.Rs)); if(showT) lines.push(tr(Ts,"T_s",COL.Ts,"dot")); }
+  if(want("p")){ lines.push(tr(Rp,"R_p",COL.Rp)); if(showT) lines.push(tr(Tp,"T_p",COL.Tp,"dot")); }
+
+  var mark = useTheta ? num("theta") : num("e0");
+  var shapes = [{ type:"line", x0:mark, x1:mark, y0:0, y1:1, yref:"paper",
+                  line:{ color:"#888", width:1, dash:"dash" } }];
+
+  Plotly.react("plotMag", lines,
+    Object.assign({}, LAY, { title:{ text:"반사율 R · 투과율 T", font:{size:12} },
+      xaxis:Object.assign({}, LAY.xaxis, {title:{text:xt}}),
+      yaxis:Object.assign({}, LAY.yaxis, {title:{text:"R, T"}, range:[0,1.02]}),
+      shapes:shapes }), CFG);
+
+  var ph = [];
+  if(want("s")){ ph.push(tr(Ps,"arg r_s",COL.Rs)); ph.push(tr(PsT,"arg t_s",COL.Ts,"dot")); }
+  if(want("p")){ ph.push(tr(Pp,"arg r_p",COL.Rp)); ph.push(tr(PpT,"arg t_p",COL.Tp,"dot")); }
+
+  Plotly.react("plotPhase", ph,
+    Object.assign({}, LAY, { title:{ text:"위상 arg r · arg t [deg]", font:{size:12} },
+      xaxis:Object.assign({}, LAY.xaxis, {title:{text:xt}}),
+      yaxis:Object.assign({}, LAY.yaxis, {title:{text:"phase [deg]"}}),
+      shapes:shapes }), CFG);
+
+  readout();
+}
+
+/* ═══════════════ readout ═══════════════ */
+function fmt(v,d){ return isFinite(v) ? v.toFixed(d===undefined?4:d) : "—"; }
+
+function readout(){
+  var E = num("e0"), th = num("theta");
+  var s = tmm(E, th, "s"), p = tmm(E, th, "p");
+  var lossyIn = (stack.ambient.k > 0);
+
+  function row(l,a,b){ return "<tr><td>"+l+"</td><td>"+a+"</td><td>"+b+"</td></tr>"; }
+  var html = "<tr><th>양</th><th>s 편광</th><th>p 편광</th></tr>";
+  html += row("Re r", fmt(s.r.re), fmt(p.r.re));
+  html += row("Im r", fmt(s.r.im), fmt(p.r.im));
+  html += row("|r|", fmt(cabs(s.r)), fmt(cabs(p.r)));
+  html += row("arg r [deg]", fmt(carg(s.r)*180/Math.PI,3), fmt(carg(p.r)*180/Math.PI,3));
+  html += row("R = |r|²", fmt(s.R), fmt(p.R));
+  html += row("|t|", fmt(cabs(s.t)), fmt(cabs(p.t)));
+  html += row("arg t [deg]", fmt(carg(s.t)*180/Math.PI,3), fmt(carg(p.t)*180/Math.PI,3));
+  if(lossyIn){
+    html += row("T","<span class='g'>n/a</span>","<span class='g'>n/a</span>");
+    html += row("A = 1−R−T","<span class='g'>n/a</span>","<span class='g'>n/a</span>");
+  } else {
+    html += row("T", fmt(s.T), fmt(p.T));
+    html += row("A = 1−R−T", fmt(1-s.R-s.T), fmt(1-p.R-p.T));
+  }
+  $("tbl").innerHTML = html;
+
+  var chips = "";
+  if(lossyIn){
+    chips += "<span class='warn'>Ambient의 k &gt; 0: 흡수 매질에서 입사 → T·A 정의 불가 " +
+             "(플럭스 인자는 입사측이 투명할 때만 유효). R과 위상은 유효합니다.</span>";
+  }
+
+  function Rp_at(deg){ return tmm(E, deg, "p").R; }
+  var lo=0, hi=89.9, step=0.5, best=0, bestV=Infinity, pass, a, v;
+  for(pass=0; pass<4; pass++){
+    best = lo; bestV = Infinity;
+    for(a=lo; a<=hi+1e-9; a+=step){
+      v = Rp_at(a);
+      if(v < bestV){ bestV = v; best = a; }
+    }
+    lo = Math.max(0, best-step); hi = Math.min(89.9, best+step); step /= 10;
+  }
+  bestV = Rp_at(best);
+
+  var single = (stack.layers.length === 0);
+  var clean  = (stack.ambient.k === 0 && stack.substrate.k === 0);
+  chips += "<span>" + ((single && clean) ? "Brewster" : "R_p 최소각") +
+           " θ = <b>" + fmt(best,3) + "°</b> (R_p = " + fmt(bestV,5) + " @ E₀)</span>";
+
+  if(single && clean && stack.substrate.n < stack.ambient.n){
+    chips += "<span>전반사 임계각 θ<sub>c</sub> = <b>" +
+      fmt(Math.asin(stack.substrate.n/stack.ambient.n)*180/Math.PI,3) + "°</b></span>";
+  }
+
+  chips += "<span>Ψ = <b>" + fmt(Math.atan(cabs(p.r)/cabs(s.r))*180/Math.PI,3) + "°</b></span>";
+  var D = (carg(p.r) - carg(s.r))*180/Math.PI;
+  if(D < 0) D += 360;
+  chips += "<span>Δ = <b>" + fmt(D,3) + "°</b></span>";
+  chips += "<span class='g'>λ₀ = " + fmt(1239.841984/E,1) + " nm · 층 수 " +
+           stack.layers.length + "</span>";
+  $("chips").innerHTML = chips;
+}
+
+/* ═══════════════ wiring ═══════════════ */
+var pending = false;
+function schedule(){
+  if(pending) return;
+  pending = true;
+  requestAnimationFrame(function(){ pending = false; draw(); });
+}
+function refreshAll(){ drawStack(); syncSelInputs(); schedule(); }
+
+["n","k","d"].forEach(function(id){
+  link(id, function(){
+    var v = parseFloat($(id).value);
+    if(!isFinite(v)){ schedule(); return; }
+    var nd = selNode();
+    if(id === "d"){ if(sel.kind === "layer") nd.d = v; }
+    else nd[id] = v;
+    drawStack();
+    schedule();
+  });
+});
+
+["theta","e0","emin","emax","npts"].forEach(function(id){ link(id, schedule); });
+
+link("ph", function(){
+  document.documentElement.style.setProperty("--ph", num("ph")+"px");
+  Plotly.Plots.resize($("plotMag")); Plotly.Plots.resize($("plotPhase"));
+});
+link("rofs", function(){
+  document.documentElement.style.setProperty("--rofs", num("rofs")+"px");
+});
+
+toggle("polTog", function(v){ state.pol = v; schedule(); });
+toggle("xTog",   function(v){ state.xaxis = v; schedule(); });
+toggle("colTog", function(v){
+  document.documentElement.style.setProperty("--cols", v);
+  setTimeout(function(){
+    Plotly.Plots.resize($("plotMag")); Plotly.Plots.resize($("plotPhase"));
+    drawStack();
+  }, 30);
+});
+
+$("stack").addEventListener("click", function(e){
+  var id = e.target.getAttribute("data-id");
+  if(!id) return;
+  if(id === "ambient" || id === "substrate") sel = { kind:id, i:0 };
+  else sel = { kind:"layer", i:parseInt(id.split(":")[1], 10) };
+  refreshAll();
+});
+
+$("addBtn").addEventListener("click", function(){
+  var at = (sel.kind === "layer") ? sel.i + 1
+         : (sel.kind === "ambient" ? 0 : stack.layers.length);
+  stack.layers.splice(at, 0, { n:2.0, k:0.0, d:100 });
+  sel = { kind:"layer", i:at };
+  refreshAll();
+});
+$("delBtn").addEventListener("click", function(){
+  if(sel.kind !== "layer") return;
+  stack.layers.splice(sel.i, 1);
+  sel = (stack.layers.length === 0)
+      ? { kind:"substrate", i:0 }
+      : { kind:"layer", i:Math.min(sel.i, stack.layers.length-1) };
+  refreshAll();
+});
+$("upBtn").addEventListener("click", function(){
+  if(sel.kind !== "layer" || sel.i === 0) return;
+  var L = stack.layers, t = L[sel.i-1];
+  L[sel.i-1] = L[sel.i]; L[sel.i] = t;
+  sel.i -= 1; refreshAll();
+});
+$("dnBtn").addEventListener("click", function(){
+  if(sel.kind !== "layer" || sel.i === stack.layers.length-1) return;
+  var L = stack.layers, t = L[sel.i+1];
+  L[sel.i+1] = L[sel.i]; L[sel.i] = t;
+  sel.i += 1; refreshAll();
+});
+
+var PRESETS = {
+  bare: function(){
+    stack.ambient = { n:1, k:0 };
+    stack.layers  = [];
+    stack.substrate = { n:1.5, k:0 };
+    sel = { kind:"substrate", i:0 };
+  },
+  ar: function(){
+    var ns = 1.5, n1 = Math.sqrt(1*ns);
+    var lam = 1239.841984 / 1.9587;
+    stack.ambient = { n:1, k:0 };
+    stack.layers  = [ { n:+n1.toFixed(4), k:0, d:Math.round(lam/(4*n1)) } ];
+    stack.substrate = { n:ns, k:0 };
+    sel = { kind:"layer", i:0 };
+  },
+  sio2si: function(){
+    stack.ambient = { n:1, k:0 };
+    stack.layers  = [ { n:1.4570, k:0, d:100 } ];
+    stack.substrate = { n:3.8817, k:0.0193 };
+    sel = { kind:"layer", i:0 };
+  },
+  dbr: function(){
+    var lam = 1239.841984 / 1.9587, nH = 2.35, nL = 1.46;
+    stack.ambient = { n:1, k:0 };
+    stack.layers = [];
+    for(var i=0;i<4;i++){
+      stack.layers.push({ n:nH, k:0, d:Math.round(lam/(4*nH)) });
+      stack.layers.push({ n:nL, k:0, d:Math.round(lam/(4*nL)) });
+    }
+    stack.substrate = { n:1.5, k:0 };
+    sel = { kind:"layer", i:0 };
+  }
+};
+document.querySelectorAll(".presets button").forEach(function(b){
+  b.addEventListener("click", function(){
+    PRESETS[b.dataset.preset]();
+    refreshAll();
+  });
+});
+
+(function(){
+  var grip = $("sidegrip"), dragging = false;
+  grip.addEventListener("mousedown", function(e){ dragging = true; e.preventDefault(); });
+  window.addEventListener("mousemove", function(e){
+    if(!dragging) return;
+    var w = Math.min(720, Math.max(300, e.clientX));
+    document.documentElement.style.setProperty("--sidew", w+"px");
+  });
+  window.addEventListener("mouseup", function(){
+    if(!dragging) return;
+    dragging = false;
+    drawStack();
+    Plotly.Plots.resize($("plotMag")); Plotly.Plots.resize($("plotPhase"));
+  });
+})();
+
+window.addEventListener("resize", function(){
+  drawStack();
+  Plotly.Plots.resize($("plotMag")); Plotly.Plots.resize($("plotPhase"));
+});
+
+document.documentElement.style.setProperty("--ph", "340px");
+refreshAll();
+</script>
+</body>
+</html>
