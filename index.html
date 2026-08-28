@@ -11,6 +11,7 @@
     <meta name="author" content="Hyun Don Kim (김현돈)" />
     <style>
       :root {
+        font-size: clamp(16px, 0.95vw, 21px);
         --maxw: min(2400px, 94vw);
       }
 
@@ -75,7 +76,7 @@
 
       .hero {
         display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
+        grid-template-columns: minmax(0, 1fr) 460px;
         gap: 2rem;
         align-items: center;
         margin-top: 1.5rem;
@@ -301,7 +302,7 @@
       }
         /* 모바일 폰 (가로 ~480px 이하) */
       @media (max-width: 480px) {
-        body {
+        :root {
           font-size: 14px;
         }
 
